@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+
+# Vivado
+
+*.jou
+*/.Xil
+./proj
+**/proj
+*/solution1
+
