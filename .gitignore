@@ -39,3 +39,5 @@
 **/proj
 */solution1
 
+# Environment Configuration
+.vscode/c_cpp_properties.json
