@@ -1,60 +1,5 @@
 #include "order_book.hpp"
 
-typedef ap_uint<48> symbol_t; 
-typedef ap_ufixed<28, 8> price_t; 
-typedef ap_uint<8> size_t;        /*Order size in hundreds*/
-typedef ap_uint<32> orderID_t;    /*Unique ID for each order*/
-    
-struct price_lookup
-{
-	ap_uint<12> orderCnt = 0;
-	price_t	price;
-};
-
-struct symbol_map
-{
-	symbol_t symbol;         // string of length 6 
-	ap_uint<12> bookIndex;		// stock's correponding index in the order book, up to 4096 stocks
-};
-
-struct decoded_message {
-	symbol_t symbol;		/*Stock symbol of maximum 6 characters */
-	ap_uint<7> posLevel;	/*Position of price level up to 128 levels */
-	ap_uint<12> posInLevel; /*Position in the price level, up to 4096 capacity per price level */
-    price_t price; /*Order price as an 20Q8 fixed-point number, upto 1'048'576 */
-    size_t size;        /*Order size in hundreds*/
-    orderID_t orderID;    /*Unique ID for each order*/
-    ap_uint<3> operation;   /*Order type: 0 - CHANGE ASK 	1 - CHANGE BID   */
-};                          /*			  2 - INCOMING ASK 	3 - INCOMING BID */
-                            /*		   	  4 - REMOVE ASK	5 - REMOVE BID	 */
-
-struct order
-{
-    ap_ufixed<28, 8> price; /*Order price as an 20Q8 fixed-point number, upto 1'048'576 */
-    ap_uint<8> size;        /*Order size in hundreds*/
-    ap_uint<32> orderID;    /*Unique ID for each order*/
-};    
-
-struct sub_order
-{
-    ap_uint<8> size;        /*Order size in hundreds*/
-    ap_uint<32> orderID;    /*Unique ID for each order*/
-};   
-
-struct price_depth{
-    ap_ufixed<28, 8> price; /*Order price as an 20Q8 fixed-point number, upto 1'048'576 */
-    ap_uint<8> size;        /*Order size in hundreds*/
-	};
-
-
-struct order_depth{
-    ap_ufixed<28, 8> price; /*Order price as an 20Q8 fixed-point number, upto 1'048'576 */
-    ap_uint<8> size;        /*Order size in hundreds*/
-    ap_uint<32> orderID;    /*Unique ID for each order*/
-	};
-
-typedef order_depth top_of_order;
-
 // make sure there should up to only one empty slot each time execute this function
 void table_refresh(
 	int ystart,
@@ -67,7 +12,7 @@ void table_refresh(
 		slot = price_table[ystart+i][xstart];
 		if (last_empty){
 			price_table[ystart+i][xstart] = slot;
-			last_empty = True
+			last_empty = true
 		}else{
 			last_empty = slot.orderCnt == 0;
 		}
@@ -121,6 +66,10 @@ void order_remove(bool bid=true){
 
 }
 
+void suborder_book(){
+
+}
+
 void order_book_system(
 		stream<decoded_message> &messages_stream,
 		stream<Time> &incoming_time,
@@ -129,12 +78,12 @@ void order_book_system(
 		stream<metadata> &outgoing_meta,
 		stream<order> &top_bid,
 		stream<order> &top_ask,
-		ap_uint<32> &top_bid_id,
-		ap_uint<32> &top_ask_id)
+		orderID_t &top_bid_id,
+		orderID_t &top_ask_id)
 {
 	static sub_order book[LEVELS*STOCKS][2*CAPACITY];
 	static price_lookup price_map[LEVELS*STOCKS][2];
-	static ap_uint<48> symbol_list[STOCKS];         // string of length 6
+	static symbol_t symbol_list[STOCKS];         // string of length 6
 
 	decoded_message msg_inbound = messages_stream.read();
 
