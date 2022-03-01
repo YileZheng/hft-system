@@ -49,7 +49,7 @@ int main()
 		}
 
 		bid = (ab == 'b')? 1: 0;
-		req_read = (id%5 == 4)? 1: 0;
+		req_read = (id == 244)? 1: 0;
 
 		// cout<< orderin.orderID << " " <<bid<<" "<<odop<<" "<< orderin.price <<" "<< orderin.size <<" "<<req_read<<endl;
 		cout<< orderin.orderID << " " <<ab<<" "<<op<<" "<< orderin.price <<" "<< orderin.size <<" "<<req_read<<endl;
@@ -66,7 +66,6 @@ int main()
 			price_read = price_stream_out.read();
 			cout << price_read.price << " " << price_read.size << endl;
 		}
-
 		id++;
 	}
 	new_file.close();

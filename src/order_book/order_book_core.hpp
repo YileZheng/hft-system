@@ -18,6 +18,7 @@ void book_read(
 	ap_uint<1> &req_read_in,
 	price_depth book[RANGE][2],
 	ap_uint<1> book_valid[RANGE][2],
+	addr_index base_bookIndex[2],
 	stream<price_depth> &feed_stream_out
 	); 
 

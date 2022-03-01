@@ -1,6 +1,7 @@
 #include "order_book.hpp"
 #include "order_book_core.hpp"
 
+#define __SYNTHESIS__
 // order book for only one instrument
 // searching by calculating address index in the book, price depth
 
@@ -22,6 +23,7 @@ void book_read(
 		ap_uint<1> &req_read_in,
 		price_depth book[RANGE][2],
 		ap_uint<1> book_valid[RANGE][2],
+		addr_index base_bookIndex[2],
 		stream<price_depth> &feed_stream_out
 	){
 		static ap_uint<1> req_read;
@@ -33,6 +35,7 @@ void book_read(
 			READ_BOOK:
 			for(int side=0; side<=1; side++){
 				for (int i=0; i<RANGE; i++){
+					int ind = (base_bookIndex[side]+i>=RANGE)? base_bookIndex[side]+i-RANGE: base_bookIndex[side]+i;
 					if(book_valid[i][side] == 1) feed_stream_out.write(book[i][side]);
 				}
 				feed_stream_out.write(dummy);
@@ -59,7 +62,7 @@ void suborder_book(
 	unsigned int bid_ask = ~bid;
 
 	// read process
-	book_read(req_read_in, book, book_valid, feed_stream_out); 
+	book_read(req_read_in, book, book_valid, base_bookIndex, feed_stream_out); 
 	
 	// base index update
 		// first price write back
@@ -68,9 +71,17 @@ void suborder_book(
 	
 	ap_uint<1> is_better_price = bid? (order_info.price>optimal_prices[bid_ask]):(order_info.price<optimal_prices[bid_ask]); 
 	if (is_better_price){
-		optimal_prices[bid_ask] = order_info.price;
-		cout<<(addr_index)hls::abs(hls::round((order_info.price-optimal_prices[bid_ask]) / (price_t)(UNIT)))<<endl;
 		base_bookIndex_tmp = base_bookIndex[bid_ask] - get_bookindex_offset(order_info.price, optimal_prices[bid_ask]);
+		optimal_prices[bid_ask] = order_info.price;
+#ifndef __SYNTHESIS__
+		std::cout<<(addr_index)hls::abs(hls::round((order_info.price-optimal_prices[bid_ask]) / (price_t)(UNIT)));
+		std::cout<<hls::abs(hls::round((order_info.price-optimal_prices[bid_ask]) / (price_t)(UNIT)));
+		std::cout<<((order_info.price-optimal_prices[bid_ask])/(price_t)(UNIT));
+		std::cout<<" "<<order_info.price;
+		std::cout<<" "<<optimal_prices[bid_ask];
+		std::cout<<" "<<(price_t)(UNIT);
+		std::cout<<std::endl;
+#endif
 		// empty least optimal price levels
 		for (int i=base_bookIndex_tmp; i<base_bookIndex[bid_ask]; i++){
 			int i_spare = i<0? i+RANGE: i;  // TODO: what if i_spare still negetive
@@ -134,7 +145,7 @@ void suborder_book(
 				SEARCH_NEXT_OPTIMAL_REMOVE:
 				for (int i=0; i<RANGE; i++){
 					unsigned int bookIndex_tmp = base_bookIndex[bid_ask]+i;
-					bookIndex_tmp =  bookIndex_tmp> RANGE? bookIndex_tmp-RANGE: bookIndex_tmp;
+					bookIndex_tmp =  bookIndex_tmp>=RANGE? bookIndex_tmp-RANGE: bookIndex_tmp;
 					if (book_valid[bookIndex_tmp][bid_ask] == 1){
 						base_bookIndex[bid_ask] = bookIndex_tmp;
 						optimal_prices[bid_ask] = book[bookIndex_tmp][bid_ask].price;
