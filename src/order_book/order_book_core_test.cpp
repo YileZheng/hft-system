@@ -1,9 +1,12 @@
 #include<iostream>
 #include<fstream>
 #include<string>
+#include <vector>
+#include <ctime>
+#include <numeric>
 
 #include "order_book.hpp"
-#include "order_book_core.hpp"
+#include "order_book_core_IndexPop.hpp"
 
 using namespace std;
 
@@ -12,6 +15,9 @@ int main()
 	string pr, qty;
 	char ab, op;
 	ifstream new_file;
+	vector<double> stat[3]; // stat_add, stat_chg, stat_rmv;
+	clock_t start, end;
+	double elapsed_ms;
 
 	int id=0;
 	order orderin;
@@ -31,7 +37,7 @@ int main()
 	while (!new_file.eof())
 	{
 		new_file>>ab>>op>>pr>>qty;
-		orderin.price = (price_t)(stof(pr)*10000); orderin.size = (qty_t)stof(qty); orderin.orderID = id;
+		orderin.price = (price_t)(stof(pr)*10000); orderin.size = (qty_t)(stof(qty)*1000); orderin.orderID = id;
 
 		switch (op)
 		{
@@ -49,11 +55,13 @@ int main()
 		}
 
 		bid = (ab == 'b')? 1: 0;
-		req_read = (id == 244)? 1: 0;
+		// req_read = (id == 244)? 1: 0;
+		req_read = (id%5 == 4)? 1: 0;
 
 		// cout<< orderin.orderID << " " <<bid<<" "<<odop<<" "<< orderin.price <<" "<< orderin.size <<" "<<req_read<<endl;
 		cout<< orderin.orderID << " " <<ab<<" "<<op<<" "<< orderin.price <<" "<< orderin.size <<" "<<req_read<<endl;
 
+		start = clock();
 		suborder_book(
 			orderin,		// price size ID
 			odop,		// new change remove
@@ -61,6 +69,10 @@ int main()
 			req_read,
 			price_stream_out
 		);
+		end = clock();
+		elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000;
+		stat[(int)odop].push_back(elapsed_ms);
+
 
 		while (!price_stream_out.empty()){
 			price_read = price_stream_out.read();
@@ -69,6 +81,17 @@ int main()
 		id++;
 	}
 	new_file.close();
+
+
+	for(int i=0; i<3; i++){
+		double sum = std::accumulate(stat[i].begin(), stat[i].end(), 0.0);
+		double mean = sum / stat[i].size();
+
+		double sq_sum = std::inner_product(stat[i].begin(), stat[i].end(), stat[i].begin(), 0.0);
+		double stdev = std::sqrt(sq_sum / stat[i].size() - mean * mean);
+
+		printf("Time elapsed: Mean %0.3fms, Stddev: %0.3fms\n", mean, stdev);
+	}
 
 	return 0;
 }

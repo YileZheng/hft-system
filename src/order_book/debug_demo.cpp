@@ -1,13 +1,14 @@
-#include "order_book.hpp"
-#include "order_book_core.hpp"
+// #include "order_book.hpp"
+// #include "order_book_core.hpp"
+#include <iostream>
 
 using namespace std;
 
 int main(){
-	cout << (price_t)UNIT << endl;
-	cout << (price_t)0.02 << endl;
-	cout<<(price_t)0.02 / (price_t)UNIT<< endl; 
-	cout<<(unsigned int)hls::abs((price_t)0.02 / (price_t)UNIT)<< endl; 
+	int ls[4] = {1,2,3,4};
+	for(int i=0; i<8; i++)
+		std::cout<<" "<<ls[i];
+	std::cout<<std::endl; 
 
 	return 0;
 }
