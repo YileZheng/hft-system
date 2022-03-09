@@ -1,7 +1,7 @@
 #include "order_book.hpp"
 #include "order_book_core_IndexPop.hpp"
 
-// #define __SYNTHESIS__
+// #define __DEBUG__
 // order book for only one instrument
 // searching by calculating address index in the book, price depth
 // and a linked chain in each indexed slot
@@ -51,7 +51,7 @@ void book_read(
 						lvl_out.price = cur_block->price;
 						lvl_out.size = cur_block->size;
 						feed_stream_out.write(lvl_out);
-#ifndef __SYNTHESIS__
+#ifdef __DEBUG__
 	std::cout<<"DEBUG - ";
 	std::cout<<" x: "<<ind<<" y: "<<j;
 	std::cout<<std::endl;
@@ -151,7 +151,7 @@ void suborder_book(
 	ap_uint<1> is_better_price = is_after(optimal_prices[bid_ask], order_info.price, bid);
 	if (is_better_price){
 		base_bookIndex_tmp = base_bookIndex[bid_ask] - get_bookindex_offset(order_info.price, optimal_prices[bid_ask], bid);
-#ifndef __SYNTHESIS__
+#ifdef __DEBUG__
 		std::cout<<"DEBUG - {better optimal price} ";
 		std::cout<<" base: "<<base_bookIndex[bid_ask];
 		std::cout<<" better base:"<<base_bookIndex_tmp;
@@ -161,7 +161,7 @@ void suborder_book(
 		std::cout<<std::endl;
 #endif
 		optimal_prices[bid_ask] = (bid)? (price_t)(optimal_prices[bid_ask]+(price_t)(UNIT*SLOTSIZE)): (price_t)(optimal_prices[bid_ask]-(price_t)(UNIT*SLOTSIZE));
-#ifndef __SYNTHESIS__
+#ifdef __DEBUG__
 		std::cout<<"DEBUG - {better optimal price} ";
 		std::cout<<" base: "<<base_bookIndex[bid_ask];
 		std::cout<<" better base:"<<base_bookIndex_tmp;
@@ -192,7 +192,7 @@ void suborder_book(
 	// calculate index
 	addr_index bookIndex = base_bookIndex[bid_ask] + get_bookindex_offset(order_info.price, optimal_prices[bid_ask], bid);
 	
-#ifndef __SYNTHESIS__
+#ifdef __DEBUG__
 	std::cout<< "DEBUG - price "<<order_info.price;
 	std::cout<<" size "<<order_info.size;
 	std::cout<<" index_offset "<<get_bookindex_offset(order_info.price, optimal_prices[bid_ask], bid);
@@ -264,20 +264,20 @@ void suborder_book(
 			int i_block;
 			// search block with the same price
 			for (i_block=0; i_block<SLOTSIZE; i_block++){
-#ifndef __SYNTHESIS__
+#ifdef __DEBUG__
 		std::cout<<"DEBUG -";
 		std::cout<<" "<<cur_block->price;
 		std::cout<<std::endl;
 #endif
 				if (cur_block->price == order_info.price){
-#ifndef __SYNTHESIS__
+#ifdef __DEBUG__
 		std::cout<<"DEBUG -";
 		std::cout<<" "<<cur_block->size;
 		std::cout<<" "<<order_info.size;
 		std::cout<<std::endl;
 #endif
 					cur_block->size += order_info.size;
-#ifndef __SYNTHESIS__
+#ifdef __DEBUG__
 	std::cout<<"DEBUG -";
 	std::cout<<" "<<cur_block->size;
 	std::cout<<" "<<order_info.size;
@@ -312,7 +312,7 @@ void suborder_book(
 			int i_block;
 			// search block with the same price
 			for (i_block=0; i_block<SLOTSIZE; i_block++){
-#ifndef __SYNTHESIS__
+#ifdef __DEBUG__
 	std::cout<<"DEBUG -";
 	std::cout<<" "<<cur_block->price;
 	std::cout<<std::endl;
@@ -341,7 +341,7 @@ void suborder_book(
 			}
 		}
 // print hole fifo
-#ifndef __SYNTHESIS__
+#ifdef __DEBUG__
 std::cout<<"DEBUG - {hole_fifo}:";
 std::cout<<" stack top: "<<stack_top;
 std::cout<<" head: "<<hole_fifo_head;

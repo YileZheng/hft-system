@@ -6,6 +6,7 @@
 #include <numeric>
 
 #include "order_book.hpp"
+// #include "order_book_core.hpp"
 #include "order_book_core_IndexPop.hpp"
 
 using namespace std;
@@ -15,7 +16,7 @@ int main()
 	string pr, qty;
 	char ab, op;
 	ifstream new_file;
-	vector<double> stat[3]; // stat_add, stat_chg, stat_rmv;
+	vector<double> stat[4]; // stat_add, stat_chg, stat_rmv;
 	clock_t start, end;
 	double elapsed_ms;
 
@@ -70,8 +71,12 @@ int main()
 			price_stream_out
 		);
 		end = clock();
-		elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000;
-		stat[(int)odop].push_back(elapsed_ms);
+		elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000000;
+		if (req_read==1)
+			stat[3].push_back(elapsed_ms);
+		else
+			stat[(int)odop].push_back(elapsed_ms);
+		
 
 
 		while (!price_stream_out.empty()){
@@ -83,14 +88,14 @@ int main()
 	new_file.close();
 
 
-	for(int i=0; i<3; i++){
+	for(int i=0; i<4; i++){
 		double sum = std::accumulate(stat[i].begin(), stat[i].end(), 0.0);
 		double mean = sum / stat[i].size();
 
 		double sq_sum = std::inner_product(stat[i].begin(), stat[i].end(), stat[i].begin(), 0.0);
 		double stdev = std::sqrt(sq_sum / stat[i].size() - mean * mean);
 
-		printf("Time elapsed: Mean %0.3fms, Stddev: %0.3fms\n", mean, stdev);
+		printf("Time elapsed: Mean %0.3fus, Stddev: %0.3fus\n", mean, stdev);
 	}
 
 	return 0;

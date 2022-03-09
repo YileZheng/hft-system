@@ -1,7 +1,7 @@
 #include "order_book.hpp"
 #include "order_book_core.hpp"
 
-#define __SYNTHESIS__
+// #define __DEBUG__
 // order book for only one instrument
 // searching by calculating address index in the book, price depth
 
@@ -73,7 +73,7 @@ void suborder_book(
 	if (is_better_price){
 		base_bookIndex_tmp = base_bookIndex[bid_ask] - get_bookindex_offset(order_info.price, optimal_prices[bid_ask]);
 		optimal_prices[bid_ask] = order_info.price;
-#ifndef __SYNTHESIS__
+#ifdef __DEBUG__
 		std::cout<<(addr_index)hls::abs(hls::round((order_info.price-optimal_prices[bid_ask]) / (price_t)(UNIT)));
 		std::cout<<hls::abs(hls::round((order_info.price-optimal_prices[bid_ask]) / (price_t)(UNIT)));
 		std::cout<<((order_info.price-optimal_prices[bid_ask])/(price_t)(UNIT));
@@ -94,7 +94,7 @@ void suborder_book(
 	// calculate index
 	addr_index bookIndex = base_bookIndex[bid_ask] + get_bookindex_offset(order_info.price, optimal_prices[bid_ask]);
 	
-#ifndef __SYNTHESIS__
+#ifdef __DEBUG__
 	std::cout<< "DEBUG - price "<<order_info.price<<" size "<<order_info.size<<" index_offset "<<(addr_index)hls::abs((order_info.price-optimal_prices[bid_ask])/(price_t)(UNIT))<<" index "; 
 	std::cout<<bookIndex<<" bid: "<<optimal_prices[0]<<"-"<<base_bookIndex[0]<<" ask: "<<optimal_prices[1]<<"-"<<base_bookIndex[1]<<std::endl;
 #endif
