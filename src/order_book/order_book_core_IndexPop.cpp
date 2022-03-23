@@ -273,6 +273,7 @@ void suborder_book(
 		else if (direction == CHANGE)
 		{
 			price_depth_chain last_block, cur_block = book[bookIndex][bid_ask];
+			// link_t cur_block_idx = INVALID_LINK;
 			link_t last_block_idx = INVALID_LINK;
 			int i_block;
 			// search block with the same price
@@ -302,16 +303,17 @@ void suborder_book(
 				if (i_block > 1) 
 					last_block_idx = last_block.next;
 				last_block = cur_block;
-				if (cur_block.next != INVALID_LINK)
+				if (cur_block.next != INVALID_LINK){
+					// cur_block_idx = cur_block.next;
 					cur_block = chain_stack[cur_block.next];
-				else
+				}else
 					printf("Price not found in the book!!!!");  // TODO
 			}
 			// if block is clear, delete from the chain
 			if (cur_block.size <= 0){
 				if (i_block == 0) {		// the block is the first block, meaning the chain will be empty
 					if (cur_block.next == INVALID_LINK){	// the only block on chain, set price to 0 indicating no chain is available
-						cur_block.price = 0;
+						book[bookIndex][bid_ask].price = 0;
 						if (bookIndex == base_bookIndex[bid_ask])	// if the chain is also at the top of the book, need to update base index and optimal price
 							update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
 					}
@@ -321,12 +323,18 @@ void suborder_book(
 					}
 				}else{					// block is not the head of the chain, change links
 					store_stack_hole(hole_fifo, hole_fifo_head, stack_top, last_block.next);	// mark down the location of the hole
-					if (last_block_idx == INVALID_LINK){
+					if (i_block == 1){
 						book[bookIndex][bid_ask].next = cur_block.next;
 					}else{
 						chain_stack[last_block_idx].next = cur_block.next;
 					}
 				}
+			}
+			else{
+				if (i_block == 0)
+					book[bookIndex][bid_ask] = cur_block;
+				else
+					chain_stack[last_block.next] = cur_block;
 			}
 	//*
 		}
@@ -358,7 +366,7 @@ void suborder_book(
 			// delete from the chain
 			if (i_block == 0) {		// the block is the first block, meaning the chain will be empty
 				if (cur_block.next == INVALID_LINK){	// the only block on chain, set price to 0 indicating no chain is available
-					cur_block.price = 0;
+					book[bookIndex][bid_ask].price = 0;
 					if (bookIndex == base_bookIndex[bid_ask])	// if the chain is also at the top of the book, need to update base index and optimal price
 						update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
 				}
