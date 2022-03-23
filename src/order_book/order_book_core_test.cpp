@@ -27,7 +27,9 @@ int main()
 	stream<price_depth> price_stream_out;
 	price_depth price_read;
 	
-	new_file.open("C:\\Users\\Leon Zheng\\git\\hft-system\\data\\SHIBUSDT_partial.txt",ios::in);
+	new_file.open("SHIBUSDT_partial.txt",ios::in);
+//	new_file.open("/home/yzhengbv/00-data/git/hft-system/data/SHIBUSDT_partial.txt",ios::in);
+//	new_file.open("C:\\Users\\Leon Zheng\\git\\hft-system\\data\\SHIBUSDT_partial.txt",ios::in);
 
 	if(!new_file)
 	{

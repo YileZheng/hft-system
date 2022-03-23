@@ -28,7 +28,7 @@ bool is_after(
 }
 
 void book_read(
-	ap_uint<1> &req_read,
+	ap_uint<1> &req_read_in,
 	price_depth_chain book[RANGE][2],
 	price_depth_chain chain_stack[CHAIN_LEVELS],
 	addr_index base_bookIndex[2],
@@ -37,16 +37,19 @@ void book_read(
 	price_depth dummy;
 	price_depth lvl_out;
 	price_depth_chain *cur_block;
+	ap_uint<1> req_read = req_read_in;
 	int ind;
 
 	if(req_read == 1){
 		req_read = 0;
-		READ_BOOK:
+		READ_BOOK_SIDE:
 		for(int side=0; side<=1; side++){
+			READ_BOOK_LEVELS:
 			for (int i=0; i<RANGE; i++){
 				ind = (base_bookIndex[side]+i>=RANGE)? base_bookIndex[side]+i-RANGE: base_bookIndex[side]+i;
 				if(book[ind][side].price != 0){
 					cur_block = &book[ind][side];
+					READ_BOOK_LEVEL_LINK:
 					for (int j=0; j<SLOTSIZE; j++){
 						lvl_out.price = cur_block->price;
 						lvl_out.size = cur_block->size;
@@ -73,6 +76,7 @@ void store_stack_hole(
 	link_t &stack_top,
 	link_t &hole
 ){
+#pragma HLS inline
 	if (hole == stack_top-1){
 		stack_top--;
 	}else{
@@ -124,7 +128,7 @@ void suborder_book(
 	ap_uint<1> &req_read_in,
 	stream<price_depth> &feed_stream_out
 ){
-	
+#pragma HLS inline recursive 
 	static price_depth_chain book[RANGE][2];		// 0 bid 1 ask
 	static price_depth_chain chain_stack[CHAIN_LEVELS];
 	static link_t hole_fifo[CHAIN_LEVELS];
@@ -142,7 +146,6 @@ void suborder_book(
 
 	// read process
 	book_read(req_read_in, book, chain_stack, base_bookIndex, feed_stream_out); 
-	
 	// base index update
 		// first price write back
 	if (optimal_prices[bid_ask] == 0) optimal_prices[bid_ask] = order_info.price;
@@ -171,12 +174,14 @@ void suborder_book(
 		std::cout<<std::endl;
 #endif
 		// empty least optimal price levels
+		UPDATE_OPTIMAL_CLEAR_LEVEL_TAIL:
 		for (int i=base_bookIndex_tmp; i<base_bookIndex[bid_ask]; i++){
 			int i_spare = i<0? i+RANGE: i;  // TODO: what if i_spare still negetive
 			if (book[i_spare][bid_ask].price != 0){
 				book[i_spare][bid_ask].price = 0;
 				// record holes obtained from clearing this chain
 				price_depth_chain *cur_block = &book[i_spare][bid_ask];
+				UPDATE_OPTIMAL_CLEAR_STORE_HOLES:
 				for (int j=0; j<SLOTSIZE; j++){
 					if (cur_block->next != INVALID_LINK)
 						store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_block->next);
@@ -225,6 +230,7 @@ void suborder_book(
 					if (is_after(order_info.price, book[bookIndex][bid_ask].price, bid)){
 						link_t next_blockIndex = book[bookIndex][bid_ask].next;
 						price_depth_chain *last_block = &book[bookIndex][bid_ask];
+						BOOK_NEW_SEARCH_LOC:
 						for (int i=0; i<SLOTSIZE; i++){
 							// miss: run to the end
 							if (next_blockIndex == INVALID_LINK){
@@ -260,22 +266,12 @@ void suborder_book(
 		}
 		else if (direction == CHANGE)
 		{
-			price_depth_chain *last_block, *cur_block = &book[bookIndex][bid_ask];
+			price_depth_chain *last_block = &book[bookIndex][bid_ask], *cur_block = &book[bookIndex][bid_ask];
 			int i_block;
 			// search block with the same price
+			BOOK_CHANGE_SEARCH_LOC:
 			for (i_block=0; i_block<SLOTSIZE; i_block++){
-#ifdef __DEBUG__
-		std::cout<<"DEBUG -";
-		std::cout<<" "<<cur_block->price;
-		std::cout<<std::endl;
-#endif
 				if (cur_block->price == order_info.price){
-#ifdef __DEBUG__
-		std::cout<<"DEBUG -";
-		std::cout<<" "<<cur_block->size;
-		std::cout<<" "<<order_info.size;
-		std::cout<<std::endl;
-#endif
 					cur_block->size += order_info.size;
 #ifdef __DEBUG__
 	std::cout<<"DEBUG -";
@@ -299,18 +295,22 @@ void suborder_book(
 					else{									// other blocks behind, put the next block in to the book, delete its original block place in stack
 						store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_block->next);
 						*cur_block = chain_stack[cur_block->next];
+					last_block->next = cur_block->next;
 					}
 				}else{					// block is not the head of the chain, change links
-					store_stack_hole(hole_fifo, hole_fifo_head, stack_top, last_block->next);	// mark down the location of the hole
-					last_block->next = cur_block->next;
+					// store_stack_hole(hole_fifo, hole_fifo_head, stack_top, last_block->next);	// mark down the location of the hole
+					/*
+				*/
 				}
 			}
+	//*
 		}
 		else if (direction == REMOVE)  // remove the entire level not just the order
 		{
-			price_depth_chain *last_block, *cur_block = &book[bookIndex][bid_ask];
+			price_depth_chain *last_block = &book[bookIndex][bid_ask], *cur_block = &book[bookIndex][bid_ask];
 			int i_block;
 			// search block with the same price
+			BOOK_REMOVE_SEARCH_LOC:
 			for (i_block=0; i_block<SLOTSIZE; i_block++){
 #ifdef __DEBUG__
 	std::cout<<"DEBUG -";
@@ -336,9 +336,13 @@ void suborder_book(
 					*cur_block = chain_stack[cur_block->next];
 				}
 			}else{					// block is not the head of the chain, change links
+					// store_stack_hole(hole_fifo, hole_fifo_head, stack_top, last_block->next);	// mark down the location of the hole
 				store_stack_hole(hole_fifo, hole_fifo_head, stack_top, last_block->next);	// mark down the location of the hole
 				last_block->next = cur_block->next;
+				/*
+				*/
 			}
+//*/
 		}
 // print hole fifo
 #ifdef __DEBUG__
