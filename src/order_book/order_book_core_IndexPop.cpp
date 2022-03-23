@@ -36,7 +36,7 @@ void book_read(
 ){
 	price_depth dummy;
 	price_depth lvl_out;
-	price_depth_chain *cur_block;
+	price_depth_chain cur_block;
 	ap_uint<1> req_read = req_read_in;
 	int ind;
 
@@ -48,19 +48,19 @@ void book_read(
 			for (int i=0; i<RANGE; i++){
 				ind = (base_bookIndex[side]+i>=RANGE)? base_bookIndex[side]+i-RANGE: base_bookIndex[side]+i;
 				if(book[ind][side].price != 0){
-					cur_block = &book[ind][side];
+					cur_block = book[ind][side];
 					READ_BOOK_LEVEL_LINK:
 					for (int j=0; j<SLOTSIZE; j++){
-						lvl_out.price = cur_block->price;
-						lvl_out.size = cur_block->size;
+						lvl_out.price = cur_block.price;
+						lvl_out.size = cur_block.size;
 						feed_stream_out.write(lvl_out);
 #ifdef __DEBUG__
 	std::cout<<"DEBUG - ";
 	std::cout<<" x: "<<ind<<" y: "<<j;
 	std::cout<<std::endl;
 #endif
-						if (cur_block->next != INVALID_LINK)
-							cur_block = &chain_stack[cur_block->next];
+						if (cur_block.next != INVALID_LINK)
+							cur_block = chain_stack[cur_block.next];
 						else break;
 					}
 				}
@@ -180,13 +180,13 @@ void suborder_book(
 			if (book[i_spare][bid_ask].price != 0){
 				book[i_spare][bid_ask].price = 0;
 				// record holes obtained from clearing this chain
-				price_depth_chain *cur_block = &book[i_spare][bid_ask];
+				price_depth_chain cur_block = book[i_spare][bid_ask];
 				UPDATE_OPTIMAL_CLEAR_STORE_HOLES:
 				for (int j=0; j<SLOTSIZE; j++){
-					if (cur_block->next != INVALID_LINK)
-						store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_block->next);
+					if (cur_block.next != INVALID_LINK)
+						store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_block.next);
 					else break;
-					cur_block = &chain_stack[cur_block->next];
+					cur_block = chain_stack[cur_block.next];
 				}
 			}
 			// TODO: may also put into stack memory
@@ -352,7 +352,6 @@ void suborder_book(
 	std::cout<<std::endl;
 #endif
 				if (cur_block.price == order_info.price){
-//					cur_block->size = 0;
 					break;
 				}
 				if (i_block >= 1) 
