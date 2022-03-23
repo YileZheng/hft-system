@@ -229,11 +229,15 @@ void suborder_book(
 					// price miss: link a new block (1. already iterate to the price should be after this one; 2. run to the end of the chain)
 					if (is_after(order_info.price, book[bookIndex][bid_ask].price, bid)){
 						link_t next_blockIndex = book[bookIndex][bid_ask].next;
+						price_depth_chain last_block_idx = INVALID_LINK;
 						BOOK_NEW_SEARCH_LOC:
 						for (int i=0; i<SLOTSIZE; i++){
 							// miss: run to the end
 							if (next_blockIndex == INVALID_LINK){
-								// last_block->next = stack_insert_index;
+								if (last_block_idx == INVALID_LINK)
+									book[bookIndex][bid_ask].next = stack_insert_index;
+								else 
+									chain_stack[last_block_idx].next = stack_insert_index;
 								chain_stack[stack_insert_index].next = INVALID_LINK;
 								chain_stack[stack_insert_index].price = order_info.price;
 								chain_stack[stack_insert_index].size = order_info.size;
@@ -244,13 +248,16 @@ void suborder_book(
 								break;
 							// miss: already iterate to the one should be behind
 							}else if (is_after(chain_stack[next_blockIndex].price, order_info.price, bid)){
-								// last_block->next = stack_insert_index;
+								if (last_block_idx == INVALID_LINK)
+									book[bookIndex][bid_ask].next = stack_insert_index;
+								else 
+									chain_stack[last_block_idx].next = stack_insert_index;
 								chain_stack[stack_insert_index].next = next_blockIndex;
 								chain_stack[stack_insert_index].price = order_info.price;
 								chain_stack[stack_insert_index].size = order_info.size;
 								break;
 							}
-							// last_block = &chain_stack[next_blockIndex];
+							last_block_idx = next_blockIndex; 
 							next_blockIndex = chain_stack[next_blockIndex].next;
 						}
 					// the price should be in front of the head of the chain
