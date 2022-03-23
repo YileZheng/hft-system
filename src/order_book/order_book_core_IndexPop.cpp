@@ -229,7 +229,7 @@ void suborder_book(
 					// price miss: link a new block (1. already iterate to the price should be after this one; 2. run to the end of the chain)
 					if (is_after(order_info.price, book[bookIndex][bid_ask].price, bid)){
 						link_t next_blockIndex = book[bookIndex][bid_ask].next;
-						price_depth_chain last_block_idx = INVALID_LINK;
+						link_t last_block_idx = INVALID_LINK;
 						BOOK_NEW_SEARCH_LOC:
 						for (int i=0; i<SLOTSIZE; i++){
 							// miss: run to the end
@@ -300,7 +300,7 @@ void suborder_book(
 #endif
 					break;
 				}
-				if (i_block > 1) 
+				if (i_block >= 1) 
 					last_block_idx = last_block.next;
 				last_block = cur_block;
 				if (cur_block.next != INVALID_LINK){
@@ -355,7 +355,7 @@ void suborder_book(
 //					cur_block->size = 0;
 					break;
 				}
-				if (i_block > 1) 
+				if (i_block >= 1) 
 					last_block_idx = last_block.next;
 				last_block = cur_block;
 				if (cur_block.next != INVALID_LINK)
@@ -376,7 +376,7 @@ void suborder_book(
 				}
 			}else{					// block is not the head of the chain, change links
 				store_stack_hole(hole_fifo, hole_fifo_head, stack_top, last_block.next);	// mark down the location of the hole
-				if (last_block_idx == INVALID_LINK){
+				if (i_block == 1){
 					book[bookIndex][bid_ask].next = cur_block.next;
 				}else{
 					chain_stack[last_block_idx].next = cur_block.next;
