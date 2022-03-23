@@ -224,11 +224,10 @@ void suborder_book(
 					// price miss: link a new block (1. already iterate to the price should be after this one; 2. run to the end of the chain)
 					if (is_after(order_info.price, book[bookIndex][bid_ask].price, bid)){
 						link_t next_blockIndex = book[bookIndex][bid_ask].next;
-						price_depth_chain *last_block = &book[bookIndex][bid_ask];
 						for (int i=0; i<SLOTSIZE; i++){
 							// miss: run to the end
 							if (next_blockIndex == INVALID_LINK){
-								last_block->next = stack_insert_index;
+								// last_block->next = stack_insert_index;
 								chain_stack[stack_insert_index].next = INVALID_LINK;
 								chain_stack[stack_insert_index].price = order_info.price;
 								chain_stack[stack_insert_index].size = order_info.size;
@@ -239,13 +238,13 @@ void suborder_book(
 								break;
 							// miss: already iterate to the one should be behind
 							}else if (is_after(chain_stack[next_blockIndex].price, order_info.price, bid)){
-								last_block->next = stack_insert_index;
+								// last_block->next = stack_insert_index;
 								chain_stack[stack_insert_index].next = next_blockIndex;
 								chain_stack[stack_insert_index].price = order_info.price;
 								chain_stack[stack_insert_index].size = order_info.size;
 								break;
 							}
-							last_block = &chain_stack[next_blockIndex];
+							// last_block = &chain_stack[next_blockIndex];
 							next_blockIndex = chain_stack[next_blockIndex].next;
 						}
 					// the price should be in front of the head of the chain
@@ -260,7 +259,8 @@ void suborder_book(
 		}
 		else if (direction == CHANGE)
 		{
-			price_depth_chain *last_block, *cur_block = &book[bookIndex][bid_ask];
+			price_depth_chain last_block, cur_block = book[bookIndex][bid_ask];
+			link_t last_block_idx = INVALID_LINK;
 			int i_block;
 			// search block with the same price
 			for (i_block=0; i_block<SLOTSIZE; i_block++){
@@ -269,14 +269,14 @@ void suborder_book(
 		std::cout<<" "<<cur_block->price;
 		std::cout<<std::endl;
 #endif
-				if (cur_block->price == order_info.price){
+				if (cur_block.price == order_info.price){
 #ifdef __DEBUG__
 		std::cout<<"DEBUG -";
 		std::cout<<" "<<cur_block->size;
 		std::cout<<" "<<order_info.size;
 		std::cout<<std::endl;
 #endif
-					cur_block->size += order_info.size;
+					cur_block.size += order_info.size;
 #ifdef __DEBUG__
 	std::cout<<"DEBUG -";
 	std::cout<<" "<<cur_block->size;
@@ -285,30 +285,40 @@ void suborder_book(
 #endif
 					break;
 				}
+				if (i_block > 1) 
+					last_block_idx = last_block.next;
 				last_block = cur_block;
-				cur_block = &chain_stack[cur_block->next];
+				if (cur_block.next != INVALID_LINK)
+					cur_block = chain_stack[cur_block.next];
+				else
+					printf("Price not found in the book!!!!");  // TODO
 			}
 			// if block is clear, delete from the chain
-			if (cur_block->size <= 0){
+			if (cur_block.size <= 0){
 				if (i_block == 0) {		// the block is the first block, meaning the chain will be empty
-					if (cur_block->next == INVALID_LINK){	// the only block on chain, set price to 0 indicating no chain is available
-						cur_block->price = 0;
+					if (cur_block.next == INVALID_LINK){	// the only block on chain, set price to 0 indicating no chain is available
+						cur_block.price = 0;
 						if (bookIndex == base_bookIndex[bid_ask])	// if the chain is also at the top of the book, need to update base index and optimal price
 							update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
 					}
 					else{									// other blocks behind, put the next block in to the book, delete its original block place in stack
-						store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_block->next);
-						*cur_block = chain_stack[cur_block->next];
+						store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_block.next);
+						book[bookIndex][bid_ask] = chain_stack[cur_block.next];
 					}
 				}else{					// block is not the head of the chain, change links
-					store_stack_hole(hole_fifo, hole_fifo_head, stack_top, last_block->next);	// mark down the location of the hole
-					last_block->next = cur_block->next;
+					store_stack_hole(hole_fifo, hole_fifo_head, stack_top, last_block.next);	// mark down the location of the hole
+					if (last_block_idx == INVALID_LINK){
+						book[bookIndex][bid_ask].next = cur_block.next;
+					}else{
+						chain_stack[last_block_idx].next = cur_block.next;
+					}
 				}
 			}
 		}
 		else if (direction == REMOVE)  // remove the entire level not just the order
 		{
-			price_depth_chain *last_block, *cur_block = &book[bookIndex][bid_ask];
+			price_depth_chain last_block, cur_block = book[bookIndex][bid_ask];
+			link_t last_block_idx = INVALID_LINK;
 			int i_block;
 			// search block with the same price
 			for (i_block=0; i_block<SLOTSIZE; i_block++){
@@ -317,27 +327,36 @@ void suborder_book(
 	std::cout<<" "<<cur_block->price;
 	std::cout<<std::endl;
 #endif
-				if (cur_block->price == order_info.price){
+				if (cur_block.price == order_info.price){
 //					cur_block->size = 0;
 					break;
 				}
+				if (i_block > 1) 
+					last_block_idx = last_block.next;
 				last_block = cur_block;
-				cur_block = &chain_stack[cur_block->next];
+				if (cur_block.next != INVALID_LINK)
+					cur_block = chain_stack[cur_block.next];
+				else
+					printf("Price not found in the book!!!!");  // TODO
 			}
 			// delete from the chain
 			if (i_block == 0) {		// the block is the first block, meaning the chain will be empty
-				if (cur_block->next == INVALID_LINK){	// the only block on chain, set price to 0 indicating no chain is available
-					cur_block->price = 0;
+				if (cur_block.next == INVALID_LINK){	// the only block on chain, set price to 0 indicating no chain is available
+					cur_block.price = 0;
 					if (bookIndex == base_bookIndex[bid_ask])	// if the chain is also at the top of the book, need to update base index and optimal price
 						update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
 				}
 				else{									// other blocks behind, put the next block in to the book, delete its original block place in stack
-					store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_block->next);
-					*cur_block = chain_stack[cur_block->next];
+					store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_block.next);
+					book[bookIndex][bid_ask] = chain_stack[cur_block.next];
 				}
 			}else{					// block is not the head of the chain, change links
-				store_stack_hole(hole_fifo, hole_fifo_head, stack_top, last_block->next);	// mark down the location of the hole
-				last_block->next = cur_block->next;
+				store_stack_hole(hole_fifo, hole_fifo_head, stack_top, last_block.next);	// mark down the location of the hole
+				if (last_block_idx == INVALID_LINK){
+					book[bookIndex][bid_ask].next = cur_block.next;
+				}else{
+					chain_stack[last_block_idx].next = cur_block.next;
+				}
 			}
 		}
 // print hole fifo
