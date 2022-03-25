@@ -197,8 +197,8 @@ addr_index get_maintain_bookIndex(
 				}
 				// TODO: may also put into stack memory
 			}
+			base_bookIndex[bid_ask] =(base_bookIndex_tmp<0)? base_bookIndex_tmp+RANGE: base_bookIndex_tmp;  // TODO: still <0 ?
 		}
-		base_bookIndex[bid_ask] =(base_bookIndex_tmp<0)? base_bookIndex_tmp+RANGE: base_bookIndex_tmp;  // TODO: still <0 ?
 	}
 
 	// calculate index
