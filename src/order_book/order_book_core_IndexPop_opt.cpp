@@ -75,8 +75,7 @@ void book_read(
 }
 
 void store_stack_hole(
-	link_t hole_fifo[CHAIN_LEVELS],
-	int &hole_fifo_head, 
+	stream<link_t> &hole_fifo,
 	link_t &stack_top,
 	link_t &hole
 ){
@@ -84,21 +83,17 @@ void store_stack_hole(
 	if (hole == stack_top-1){
 		stack_top--;
 	}else{
-		hole_fifo[hole_fifo_head++] = hole;
-		if (hole_fifo_head >= CHAIN_LEVELS) hole_fifo_head = 0;
+		hole_fifo.write(hole);
 	}
 }
 
 link_t get_stack_insert_index(
-	link_t hole_fifo[CHAIN_LEVELS],
-	int &hole_fifo_head, 
-	int &hole_fifo_tail,
+	stream<link_t> &hole_fifo,
 	link_t &stack_top
 ){
 	link_t addr_out;
-	if (hole_fifo_head!=hole_fifo_tail){
-		addr_out = hole_fifo[hole_fifo_tail++];
-		if (hole_fifo_tail >= CHAIN_LEVELS) hole_fifo_tail = 0;
+	if (!hole_fifo.empty()){
+		addr_out = hole_fifo.read();
 	}else{
 		addr_out = stack_top++;		// TODO: how to deal with overflow (default will not overflow)
 	}
@@ -136,8 +131,7 @@ addr_index get_maintain_bookIndex(
 	addr_index base_bookIndex[2],
 	price_t optimal_prices[2],
 
-	link_t hole_fifo[CHAIN_LEVELS],
-	int &hole_fifo_head, 
+	stream<link_t> &hole_fifo,
 	link_t &stack_top
 ){
 
@@ -190,7 +184,7 @@ addr_index get_maintain_bookIndex(
 					UPDATE_OPTIMAL_CLEAR_STORE_HOLES:
 					for (int j=0; j<SLOTSIZE; j++){
 						if (cur_block.next != INVALID_LINK)
-							store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_block.next);
+							store_stack_hole(hole_fifo, stack_top, cur_block.next);
 						else break;
 						cur_block = book[cur_block.next];
 					}
@@ -212,9 +206,7 @@ void update_book(
 	orderOp &direction,		// new change remove
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],		// 0 bid 1 ask
 
-	link_t hole_fifo[CHAIN_LEVELS],
-	int &hole_fifo_head, 
-	int &hole_fifo_tail, 
+	stream<link_t> &hole_fifo,
 	link_t &stack_top,
 
 	addr_index &bookIndex_in,
@@ -248,7 +240,7 @@ void update_book(
 				if (chain_head.price == order_info.price)
 					book[bookIndex].size = chain_head.size + order_info.size; 
 				else{
-					stack_insert_index = get_stack_insert_index(hole_fifo, hole_fifo_head, hole_fifo_tail, stack_top);
+					stack_insert_index = get_stack_insert_index(hole_fifo, stack_top);
 					// when the price should be located somewhere after this block on this chain, 
 					// search the chain: 
 					// price hit: add up size; 
@@ -344,12 +336,12 @@ void update_book(
 							update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
 					}
 					else{									// other blocks behind, put the next block in to the book, delete its original block place in stack
-						store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_block.next);
+						store_stack_hole(hole_fifo, stack_top, cur_block.next);
 						book[cur_bookIndex] = book[cur_block.next];
 					}
 				}
 				else{					// block is not the head of the chain, change links
-					store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_bookIndex);	// mark down the location of the hole
+					store_stack_hole(hole_fifo, stack_top, cur_bookIndex);	// mark down the location of the hole
 					book[last_bookIndex].next = cur_block.next;
 				}
 			}
@@ -389,12 +381,12 @@ void update_book(
 						update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
 				}
 				else{									// other blocks behind, put the next block in to the book, delete its original block place in stack
-					store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_block.next);
+					store_stack_hole(hole_fifo, stack_top, cur_block.next);
 					book[cur_bookIndex] = book[cur_block.next];
 				}
 			}
 			else{					// block is not the head of the chain, change links
-				store_stack_hole(hole_fifo, hole_fifo_head, stack_top, cur_bookIndex);	// mark down the location of the hole
+				store_stack_hole(hole_fifo, stack_top, cur_bookIndex);	// mark down the location of the hole
 				book[last_bookIndex].next = cur_block.next;
 			}
 //*/
@@ -403,15 +395,15 @@ void update_book(
 #ifdef __DEBUG__
 std::cout<<"DEBUG - {hole_fifo}:";
 std::cout<<" stack top: "<<stack_top;
-std::cout<<" head: "<<hole_fifo_head;
-std::cout<<" tail: "<<hole_fifo_tail;
-std::cout<<" content: ";
-int fifo_ptr = hole_fifo_tail;
-int length = (hole_fifo_head> hole_fifo_tail)? hole_fifo_head-hole_fifo_tail: hole_fifo_head-hole_fifo_tail+CHAIN_LEVELS;
-for (int ii=hole_fifo_tail; ii<hole_fifo_tail+length; ii++){
-	fifo_ptr = (ii>=CHAIN_LEVELS)? ii-CHAIN_LEVELS: ii;
-	std::cout<<" "<<hole_fifo[fifo_ptr];
-}
+// std::cout<<" head: "<<hole_fifo_head;
+// std::cout<<" tail: "<<hole_fifo_tail;
+// std::cout<<" content: ";
+// int fifo_ptr = hole_fifo_tail;
+// int length = (hole_fifo_head> hole_fifo_tail)? hole_fifo_head-hole_fifo_tail: hole_fifo_head-hole_fifo_tail+CHAIN_LEVELS;
+// for (int ii=hole_fifo_tail; ii<hole_fifo_tail+length; ii++){
+// 	fifo_ptr = (ii>=CHAIN_LEVELS)? ii-CHAIN_LEVELS: ii;
+// 	std::cout<<" "<<hole_fifo[fifo_ptr];
+// }
 std::cout<<std::endl;
 #endif
 	}
@@ -438,9 +430,10 @@ void suborder_book(
 	static price_t optimal_prices[2] = {0, 0};
 	static addr_index base_bookIndex[2] = {0, 0};
 
-	static link_t hole_fifo[CHAIN_LEVELS];
-	static int hole_fifo_head = 0;
-	static int hole_fifo_tail = 0;
+	// static link_t hole_fifo[CHAIN_LEVELS];
+	static stream<link_t> hole_fifo;
+	// static int hole_fifo_head = 0;
+	// static int hole_fifo_tail = 0;
 	static link_t stack_top = RANGE*2;
 
 	// side
@@ -459,7 +452,6 @@ void suborder_book(
 			optimal_prices,
 
 			hole_fifo,
-			hole_fifo_head, 
 			stack_top
 		);
 
@@ -470,8 +462,6 @@ void suborder_book(
 			book,		// 0 bid 1 ask
 
 			hole_fifo,
-			hole_fifo_head, 
-			hole_fifo_tail, 
 			stack_top,
 
 			bookIndex,

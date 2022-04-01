@@ -29,16 +29,13 @@ void book_read(
 );
 
 void store_stack_hole(
-	link_t hole_fifo[CHAIN_LEVELS],
-	int &hole_fifo_head, 
+	stream<link_t> &hole_fifo,
 	link_t &stack_top,
 	link_t &hole
 );
 
 link_t get_stack_insert_index(
-	link_t hole_fifo[CHAIN_LEVELS],
-	int &hole_fifo_head, 
-	int &hole_fifo_tail,
+	stream<link_t> &hole_fifo,
 	link_t &stack_top
 );
 
@@ -58,8 +55,7 @@ addr_index get_maintain_bookIndex(
 	addr_index base_bookIndex[2],
 	price_t optimal_prices[2],
 
-	link_t hole_fifo[CHAIN_LEVELS],
-	int &hole_fifo_head, 
+	stream<link_t> &hole_fifo,
 	link_t &stack_top
 );
 
@@ -69,9 +65,7 @@ void update_book(
 	orderOp &direction,		// new change remove
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],		// 0 bid 1 ask
 
-	link_t hole_fifo[CHAIN_LEVELS],
-	int &hole_fifo_head, 
-	int &hole_fifo_tail, 
+	stream<link_t> &hole_fifo,
 	link_t &stack_top,
 
 	addr_index &bookIndex_in,
