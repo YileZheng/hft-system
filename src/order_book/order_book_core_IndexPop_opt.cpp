@@ -106,6 +106,7 @@ void update_optimal(
 	addr_index base_bookIndex[2],
 	unsigned int &bid_ask
 ){
+	price_t cur_price; 
 	addr_index book_side_offset = bid_ask? RANGE: 0;
 	unsigned int bookIndex_tmp = base_bookIndex[bid_ask]+1;
 	bookIndex_tmp = (bookIndex_tmp>=RANGE)? bookIndex_tmp-RANGE: bookIndex_tmp;
@@ -113,7 +114,8 @@ void update_optimal(
 	int i;
 	SEARCH_NEXT_OPTIMAL:
 	for (i=2; i<=RANGE; i++){		// search backward in the book starting with orginal base_bookIndex
-		if (book[bookIndex_tmp].price != 0){		// find valid slot
+		cur_price = book[bookIndex_tmp].price;
+		if (cur_price != 0){		// find valid slot
 			break;
 		}
 		bookIndex_tmp = base_bookIndex[bid_ask]+i;
