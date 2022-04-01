@@ -46,7 +46,7 @@ void book_read(
 		req_read = 0;
 		READ_BOOK_SIDE:
 		for(int side=0; side<=1; side++){
-			addr_index book_side_offset = side? RANGE: 0;
+			addr_index book_side_offset = (side==1)? RANGE: 0;
 			READ_BOOK_LEVELS:
 			for (int i=0; i<RANGE; i++){
 				ind = (base_bookIndex[side]+i>=RANGE)? base_bookIndex[side]+i-RANGE: base_bookIndex[side]+i;
@@ -202,7 +202,7 @@ addr_index get_maintain_bookIndex(
 	}
 
 	// calculate index
-	addr_index bookIndex = base_bookIndex[bid_ask] + get_bookindex_offset(order_info.price, optimal_prices[bid_ask], bid) + book_side_offset;
+	addr_index bookIndex = base_bookIndex[bid_ask] + get_bookindex_offset(order_info.price, optimal_prices[bid_ask], bid);
 	return bookIndex;
 }
 
@@ -254,9 +254,9 @@ void update_book(
 					// price hit: add up size; 
 					// price miss: link a new block (1. already iterate to the price should be after this one; 2. run to the end of the chain)
 					if (is_after(order_info.price, chain_head.price, bid)){
-						link_t cur_bookIndex = chain_head.next;
 						link_t last_bookIndex = bookIndex;
-						price_depth_chain cur_block;
+						link_t cur_bookIndex = chain_head.next;
+						price_depth_chain cur_block = book[cur_bookIndex];
 						BOOK_NEW_SEARCH_LOC:
 						for (int i=0; i<SLOTSIZE; i++){
 							if (cur_bookIndex == INVALID_LINK){
@@ -266,7 +266,6 @@ void update_book(
 								// book[stack_insert_index] = chain_new;
 								break;
 							}else{
-								cur_block = book[cur_bookIndex];
 								if (cur_block.price == order_info.price){
 									// hit
 									chain_new.size += cur_block.size;
@@ -283,6 +282,7 @@ void update_book(
 							}
 							last_bookIndex = cur_bookIndex; 
 							cur_bookIndex = cur_block.next;
+							cur_block = book[cur_bookIndex];
 						}
 						book[stack_insert_index] = chain_new;
 					// the price should be in front of the head of the chain
@@ -305,20 +305,20 @@ void update_book(
 			for (i_block=0; i_block<SLOTSIZE; i_block++){
 #ifdef __DEBUG__
 		std::cout<<"DEBUG -";
-		std::cout<<" "<<cur_block->price;
+		std::cout<<" "<<cur_block.price;
 		std::cout<<std::endl;
 #endif
 				if (cur_block.price == order_info.price){
 #ifdef __DEBUG__
 		std::cout<<"DEBUG -";
-		std::cout<<" "<<cur_block->size;
+		std::cout<<" "<<cur_block.size;
 		std::cout<<" "<<order_info.size;
 		std::cout<<std::endl;
 #endif
 					cur_block.size += order_info.size;
 #ifdef __DEBUG__
 	std::cout<<"DEBUG -";
-	std::cout<<" "<<cur_block->size;
+	std::cout<<" "<<cur_block.size;
 	std::cout<<" "<<order_info.size;
 	std::cout<<std::endl;
 #endif
@@ -435,7 +435,7 @@ void suborder_book(
 ){
 
 	static price_depth_chain book[RANGE*2+CHAIN_LEVELS];		// 0 bid 1 ask
-	static price_t optimal_prices[2];
+	static price_t optimal_prices[2] = {0, 0};
 	static addr_index base_bookIndex[2] = {0, 0};
 
 	static link_t hole_fifo[CHAIN_LEVELS];
