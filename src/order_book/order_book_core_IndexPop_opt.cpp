@@ -100,6 +100,27 @@ link_t get_stack_insert_index(
 	return addr_out;
 }
 
+
+addr_index cal_index(
+	int i,
+	addr_index baseIndex,
+	addr_index book_side_offset
+){
+	addr_index bookIndex_tmp;
+	bookIndex_tmp = baseIndex+i;
+	bookIndex_tmp = (bookIndex_tmp>=RANGE)? bookIndex_tmp-RANGE: bookIndex_tmp;
+	bookIndex_tmp += book_side_offset;
+	return bookIndex_tmp;
+}
+
+bool indexprice_valid(
+	price_depth_chain book[RANGE*2+CHAIN_LEVELS],
+	addr_index bookIndex_tmp
+){
+	price_t cur_price = book[bookIndex_tmp].price;
+	return (cur_price != 0);
+}
+
 void update_optimal(
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],
 	price_t optimal_prices[2],
@@ -108,19 +129,29 @@ void update_optimal(
 ){
 	price_t cur_price; 
 	addr_index book_side_offset = bid_ask? RANGE: 0;
-	unsigned int bookIndex_tmp = base_bookIndex[bid_ask]+1;
+	unsigned int bookIndex_tmp;//, bookIndex_tmp_get;
+	// bookIndex_tmp = cal_index(1, base_bookIndex[bid_ask], book_side_offset);
+	// bookIndex_tmp_get = bookIndex_tmp;
+	// bool is_valid = indexprice_valid(book, bookIndex_tmp_get);
+	bookIndex_tmp = base_bookIndex[bid_ask]+1;
 	bookIndex_tmp = (bookIndex_tmp>=RANGE)? bookIndex_tmp-RANGE: bookIndex_tmp;
 	bookIndex_tmp += book_side_offset;
+	cur_price = book[bookIndex_tmp].price;
 	int i;
 	SEARCH_NEXT_OPTIMAL:
 	for (i=2; i<=RANGE; i++){		// search backward in the book starting with orginal base_bookIndex
-		cur_price = book[bookIndex_tmp].price;
 		if (cur_price != 0){		// find valid slot
 			break;
 		}
 		bookIndex_tmp = base_bookIndex[bid_ask]+i;
 		bookIndex_tmp = (bookIndex_tmp>=RANGE)? bookIndex_tmp-RANGE: bookIndex_tmp;
 		bookIndex_tmp += book_side_offset;
+		cur_price = book[bookIndex_tmp].price;
+		// if (is_valid)
+		// 	break;
+		// bookIndex_tmp = cal_index(i, base_bookIndex[bid_ask], book_side_offset);
+		// bookIndex_tmp_get = bookIndex_tmp;
+		// is_valid = indexprice_valid(book, bookIndex_tmp_get);
 	}
 	base_bookIndex[bid_ask] = bookIndex_tmp;
 	optimal_prices[bid_ask] = (bid_ask)? (price_t)(optimal_prices[bid_ask]-(price_t)(UNIT*SLOTSIZE*i)):
