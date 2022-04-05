@@ -141,6 +141,9 @@ void update_optimal(
 	SEARCH_NEXT_OPTIMAL:
 	for (i=2; i<=RANGE; i++){		// search backward in the book starting with orginal base_bookIndex
 		if (cur_price != 0){		// find valid slot
+			base_bookIndex[bid_ask] = bookIndex_tmp;
+			optimal_prices[bid_ask] = (bid_ask)? (price_t)(optimal_prices[bid_ask]-(price_t)(UNIT*SLOTSIZE*(i-1))):
+												(price_t)(optimal_prices[bid_ask]+(price_t)(UNIT*SLOTSIZE*(i-1)));
 			break;
 		}
 		bookIndex_tmp = base_bookIndex[bid_ask]+i;
@@ -153,9 +156,6 @@ void update_optimal(
 		// bookIndex_tmp_get = bookIndex_tmp;
 		// is_valid = indexprice_valid(book, bookIndex_tmp_get);
 	}
-	base_bookIndex[bid_ask] = bookIndex_tmp;
-	optimal_prices[bid_ask] = (bid_ask)? (price_t)(optimal_prices[bid_ask]-(price_t)(UNIT*SLOTSIZE*i)):
-										(price_t)(optimal_prices[bid_ask]+(price_t)(UNIT*SLOTSIZE*i));
 }
 
 addr_index get_maintain_bookIndex(
