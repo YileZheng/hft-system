@@ -13,7 +13,7 @@ using namespace hls;
 typedef ap_uint<64> Time;	/*Time stamp for round-trip latency measurements*/
 
 typedef ap_uint<48> symbol_t; 
-typedef ap_ufixed<28, 8> price_t; 
+typedef ap_ufixed<52, 32> price_t; 
 typedef ap_int<32> qty_t;        /*Order size in hundreds*/
 typedef ap_uint<32> orderID_t;    /*Unique ID for each order*/
 typedef ap_uint<12> link_t;
@@ -49,7 +49,7 @@ struct decoded_message {
 
 struct order
 {
-    price_t price; /*Order price as an 20Q8 fixed-point number, upto 1'048'576 */
+    price_t price; /*Order price as an 20Q16 fixed-point number, upto 1'048'576 */
     qty_t size;        /*Order size in hundreds*/
     orderID_t orderID;    /*Unique ID for each order*/
 };    
