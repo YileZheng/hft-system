@@ -22,8 +22,8 @@ string concat_string(vector<vector<price_depth>> pd, std::string delimiter, int 
 int main()
 {
 	int level=LV;
-	string message_path("data/lobster/AAPL_2012-06-21_34200000_57600000_message_10.csv.txt");
-	string orderbook_path("data/lobster/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv.txt"); 
+	string message_path("/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_message_10.csv");
+	string orderbook_path("/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv.txt"); 
 	string result_path("result.csv");
 	string answer_path("answer.csv");
 
@@ -50,12 +50,34 @@ int main()
 
 	if((!orderbook) || (!message))
 	{
-		cout<<"Sorry the file you are looking for is not available"<<endl;
+		std::cout<<"Sorry the file you are looking for is not available"<<endl;
 		return -1;
 	}
 	
 	string line, orderbook_line;
 	vector<string> line_split;
+
+	if (!message.eof()){
+		orderbook >> orderbook_line;
+		message >> line;
+		line_split = split_string(orderbook_line, string(","));
+		bid = 1;
+		odop = NEW;
+		req_read = 0;
+		for(vector<string>::iterator it = line_split.begin(); it != line_split.end(); it++){
+			pr = *it;
+			qty = *(++it);
+			orderin.price = (price_t)(stof(pr)/MULTI); orderin.size = (qty_t)(stof(qty)); orderin.orderID = (size_t)1;
+			bid++;
+			suborder_book(
+				orderin,		// price size ID
+				odop,		// new change remove
+				bid,
+				req_read,
+				price_stream_out
+			);
+		}
+	}
 
 	while (!message.eof())
 	{
@@ -94,7 +116,7 @@ int main()
 		bid = (ab == "1")? 1: 0;
 		req_read = ((id++)%5 == 4)? 1: 0;
 
-		cout<<"OrderID: "<<orderin.orderID << " Side: " <<ab<<" Type: "<<op<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
+		std::cout<<"OrderID: "<<orderin.orderID << " Side: " <<ab<<" Type: "<<op<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
 
 		start = clock();
 		suborder_book(
@@ -111,7 +133,7 @@ int main()
 		vector<price_depth> cur_v;
 		while (!price_stream_out.empty()){
 			price_read = price_stream_out.read();
-			cout << price_read.price << " " << price_read.size << endl;
+			std::cout << price_read.price << " " << price_read.size << endl;
 			if (price_read.price != 0){
 				cur_v.push_back(price_read);
 			}else {
