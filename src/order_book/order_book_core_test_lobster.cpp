@@ -58,9 +58,11 @@ int main()
 	vector<string> line_split;
 
 	if (!message.eof()){
+		id++;
 		orderbook >> orderbook_line;
 		message >> line;
 		line_split = split_string(orderbook_line, string(","));
+		std:: cout << "Initiate order book" << std::endl;
 		bid = 1;
 		odop = NEW;
 		req_read = 0;
@@ -116,8 +118,6 @@ int main()
 		bid = (ab == "1")? 1: 0;
 		req_read = ((id++)%5 == 4)? 1: 0;
 
-		std::cout<<"OrderID: "<<orderin.orderID << " Side: " <<ab<<" Type: "<<op<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
-
 		start = clock();
 		suborder_book(
 			orderin,		// price size ID
@@ -128,6 +128,8 @@ int main()
 		);
 		end = clock();
 		elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000000;
+
+		std::cout<<"Line: " << id << " OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
 
 		vector<vector<price_depth>> resultbook;
 		vector<price_depth> cur_v;
@@ -198,6 +200,8 @@ vector<string> split_string(
 		res.push_back(token);
 		s.erase(0, pos + delimiter.length());
 	}
+	res.push_back(s);
+	std::cout << "Splitted line length: " << res.size() << std::endl;
 	return res;
 }
 
