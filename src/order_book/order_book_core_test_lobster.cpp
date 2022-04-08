@@ -23,7 +23,7 @@ int main()
 {
 	int level=LV;
 	string message_path("/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_message_10.csv");
-	string orderbook_path("/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv.txt"); 
+	string orderbook_path("/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv"); 
 	string result_path("result.csv");
 	string answer_path("answer.csv");
 
