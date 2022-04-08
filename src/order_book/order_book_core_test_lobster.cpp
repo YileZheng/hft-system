@@ -147,6 +147,9 @@ int main()
 		if (req_read==1){
 			stat[3].push_back(elapsed_ms);
 			string s = concat_string(resultbook, string(","), level);
+			if (s.compare(orderbook_line) != 0){
+				std::cout << "Line: " <<id<<": Result orderbook not match !!!!!!!!" <<std::endl;
+			}
 			result << s << endl;
 			answer << orderbook_line << endl;
 		}
@@ -214,7 +217,7 @@ string concat_string(
 
 	std::ostringstream ss;
 	price_depth cur_pd; 
-	double price;
+	int price;
 	int size;
 
 	vector<vector<price_depth>::iterator> iter_v, end_v;
