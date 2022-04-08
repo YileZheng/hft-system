@@ -2,9 +2,10 @@
 #include<fstream>
 #include<sstream>
 #include<string>
-#include <vector>
-#include <ctime>
-#include <numeric>
+#include<vector>
+#include<ctime>
+#include<numeric>
+#include<map>
 
 #include "order_book.hpp"
 // #include "order_book_core.hpp"
@@ -18,6 +19,7 @@ using namespace std;
 
 vector<string> split_string(std::string s,std::string delimiter);
 string concat_string(vector<vector<price_depth>> pd, std::string delimiter, int level);
+void check_update_last_price(vector<string> orderBook_split);
 
 int main()
 {
@@ -86,6 +88,7 @@ int main()
 		orderbook >> orderbook_line;
 		message >> line;
 		line_split = split_string(line, string(","));
+		check_update_last_price( split_string(orderbook_line, string(",")) );
 
 		tstmp = line_split[0];
 		op = line_split[1];
@@ -116,7 +119,7 @@ int main()
 		}
 
 		bid = (ab == "1")? 1: 0;
-		req_read = ((id++)%5 == 4)? 1: 0;
+		req_read = ((id)%5 == 4)? 1: 0;
 
 		start = clock();
 		suborder_book(
@@ -130,6 +133,7 @@ int main()
 		elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000000;
 
 		std::cout<<"Line: " << id << " OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
+		id++; 
 
 		vector<vector<price_depth>> resultbook;
 		vector<price_depth> cur_v;
@@ -247,3 +251,95 @@ string concat_string(
 	return std::string(ss.str());
 }
 
+void check_update_last_price(
+	vector<string> orderBook_split
+){
+	static map<int, int> cache_last;
+	static int price_last_b, price_last_a;
+	static int vol_last_b, vol_last_a;
+
+	order orderin;
+	orderOp odop;
+	ap_uint<1> bid, req_read=0;
+	stream<price_depth> price_stream_out;
+
+	// bid at the end
+	int offset = 0;
+	int vol_cur, price_cur = stoi(*(orderBook_split.end()-2-4*offset)); 
+	while (price_cur == -9999999999){
+		price_cur = stoi(*(orderBook_split.end()-2-4*(++offset)));
+	}
+	vol_cur = stoi(*(orderBook_split.end()-1-4*offset));
+
+	if (price_cur < price_last_b){
+		int vol_diff;
+		if (cache_last.find(price_cur) != cache_last.end()){
+			vol_diff = vol_cur - cache_last[price_cur];
+			cache_last.erase(price_cur);
+		}else{
+			vol_diff = vol_cur;
+		}
+		
+		if (vol_diff != 0){
+			orderin.price = (price_t)((float)(price_cur)/MULTI); orderin.size = (qty_t)(vol_diff); orderin.orderID = 1000;
+			bid = 1;
+			odop = (vol_diff<0)? CHANGE: NEW;
+			suborder_book(
+				orderin,		// price size ID
+				odop,		// new change remove
+				bid,
+				req_read,
+				price_stream_out
+			);
+			std::cout <<"Change on price level at the end: ";
+			std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
+		}
+	}
+	else if (price_cur > price_last_b) // price at the end overflow
+	{
+		cache_last[price_last_b] = vol_last_b;
+	}
+	price_last_b = price_cur;
+	vol_last_b = vol_cur;
+	
+
+	// ask at the end
+	int offset = 0;
+	int vol_cur, price_cur = stoi(*(orderBook_split.end()-4-4*offset)); 
+	while (price_cur == 9999999999){
+		price_cur = stoi(*(orderBook_split.end()-4-4*(++offset)));
+	}
+	vol_cur = stoi(*(orderBook_split.end()-3-4*offset));
+
+	if (price_cur > price_last_a){
+		int vol_diff;
+		if (cache_last.find(price_cur) != cache_last.end()){
+			vol_diff = vol_cur - cache_last[price_cur];
+			cache_last.erase(price_cur);
+		}else{
+			vol_diff = vol_cur;
+		}
+
+		if (vol_diff != 0){
+			orderin.price = (price_t)((float)(price_cur)/MULTI); orderin.size = (qty_t)(vol_diff); orderin.orderID = 1000;
+			bid = 1;
+			odop = (vol_diff<0)? CHANGE: NEW;
+			suborder_book(
+				orderin,		// price size ID
+				odop,		// new change remove
+				bid,
+				req_read,
+				price_stream_out
+			);
+			std::cout <<"Change on price level at the end: ";
+			std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
+		}
+	}
+	else if (price_cur < price_last_a) // price at the end overflow
+	{
+		cache_last[price_last_a] = vol_last_a;
+	}
+	price_last_a = price_cur;
+	vol_last_a = vol_cur;
+
+}
