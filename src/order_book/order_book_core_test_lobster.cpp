@@ -263,9 +263,10 @@ void check_update_last_price(
 	ap_uint<1> bid, req_read=0;
 	stream<price_depth> price_stream_out;
 
+	int offset, vol_cur, price_cur;
 	// bid at the end
-	int offset = 0;
-	int vol_cur, price_cur = stoi(*(orderBook_split.end()-2-4*offset)); 
+	offset = 0;
+	vol_cur, price_cur = stoi(*(orderBook_split.end()-2-4*offset)); 
 	while (price_cur == -9999999999){
 		price_cur = stoi(*(orderBook_split.end()-2-4*(++offset)));
 	}
@@ -304,8 +305,8 @@ void check_update_last_price(
 	
 
 	// ask at the end
-	int offset = 0;
-	int vol_cur, price_cur = stoi(*(orderBook_split.end()-4-4*offset)); 
+	offset = 0;
+	vol_cur, price_cur = stoi(*(orderBook_split.end()-4-4*offset)); 
 	while (price_cur == 9999999999){
 		price_cur = stoi(*(orderBook_split.end()-4-4*(++offset)));
 	}
