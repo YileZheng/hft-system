@@ -268,14 +268,22 @@ void update_book(
 		if (direction == NEW){
 			// when there is no valid price level in this slot
 			if (chain_head.price == 0){
+#ifdef __DEBUG__
+	std::cout<<"DEBUG - NEW - chain head = 0, insert to a new chain ";
+	std::cout<<std::endl;
+#endif
 				chain_new.next = INVALID_LINK;
 				book[bookIndex] = chain_new;
 			// when slot valid
 			}else{
 				// if hit at the link head
-				if (chain_head.price == order_info.price)
+				if (chain_head.price == order_info.price){
+#ifdef __DEBUG__
+	std::cout<<"DEBUG - NEW - hit at the chain head ";
+	std::cout<<std::endl;
+#endif
 					book[bookIndex].size = chain_head.size + order_info.size; 
-				else{
+				}else{
 					stack_insert_index = get_stack_insert_index(hole_fifo, stack_top);
 					// when the price should be located somewhere after this block on this chain, 
 					// search the chain: 
@@ -289,6 +297,10 @@ void update_book(
 						for (int i=0; i<SLOTSIZE; i++){
 							if (cur_bookIndex == INVALID_LINK){
 								// miss: run to the end
+#ifdef __DEBUG__
+	std::cout<<"DEBUG - NEW - insert to the chain tail ";
+	std::cout<<std::endl;
+#endif
 								book[last_bookIndex].next = stack_insert_index;
 								chain_new.next = INVALID_LINK;
 								book[stack_insert_index] = chain_new;
@@ -298,9 +310,17 @@ void update_book(
 									// hit
 //									chain_new.size += cur_block.size;
 //									chain_new.next = cur_block.next;
+#ifdef __DEBUG__
+	std::cout<<"DEBUG - NEW - hit in the chain ";
+	std::cout<<std::endl;
+#endif
 									book[cur_bookIndex].size += order_info.size;
 									break;
 								}else if (is_after(cur_block.price, order_info.price, bid)){
+#ifdef __DEBUG__
+	std::cout<<"DEBUG - NEW - insert to the middle of the chain ";
+	std::cout<<std::endl;
+#endif
 									// miss: already iterate to the one should be behind
 									book[last_bookIndex].next = stack_insert_index;
 									chain_new.next = cur_bookIndex;
@@ -315,6 +335,10 @@ void update_book(
 //						book[stack_insert_index] = chain_new;
 					// the price should be in front of the head of the chain
 					}else{				// the coming price better than the one in book(meaning no orders in this price level), replace it and put it into the stack and connect the link to it;
+#ifdef __DEBUG__
+	std::cout<<"DEBUG - NEW - insert to the front of the chain head ";
+	std::cout<<std::endl;
+#endif
 						book[stack_insert_index] = chain_head;
 						chain_new.next = stack_insert_index;
 						book[bookIndex] = chain_new; 

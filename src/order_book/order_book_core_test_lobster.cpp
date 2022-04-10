@@ -274,6 +274,7 @@ void check_update_last_price(
 
 ){
 	static map<int, int> cache_last;
+	static vector<pair<int, int>> cache_lasta, cache_lastb;
 	static int price_last_b=price_lastb_init, price_last_a=price_lasta_init;
 	static int vol_last_b=vol_lastb_init, vol_last_a=vol_lasta_init;
 
@@ -281,8 +282,9 @@ void check_update_last_price(
 	orderOp odop;
 	ap_uint<1> bid, req_read=0;
 	stream<price_depth> price_stream_out;
+	vector<pair<int, int>> *cache;
 
-	int offset, vol_cur, price_cur;
+	int offset, vol_cur, price_cur, target_price;
 	// bid at the end
 	offset = 0;
 	vol_cur, price_cur = stoi(*(orderBook_split.end()-2-4*offset)); 
@@ -291,34 +293,51 @@ void check_update_last_price(
 	}
 	vol_cur = stoi(*(orderBook_split.end()-1-4*offset));
 
+	cache = &cache_lastb;
 	if (price_cur < price_last_b){
 		int vol_diff;
-		if (cache_last.find(price_cur) != cache_last.end()){
-			vol_diff = vol_cur - cache_last[price_cur];
-			cache_last.erase(price_cur);
-		}else{
-			vol_diff = vol_cur;
-		}
-		
-		if (vol_diff != 0){
-			orderin.price = (price_t)((float)(price_cur)/MULTI); orderin.size = (qty_t)(vol_diff); orderin.orderID = 1000;
-			bid = 1;
-			odop = (vol_diff<0)? CHANGE: NEW;
-			suborder_book(
-				orderin,		// price size ID
-				odop,		// new change remove
-				bid,
-				req_read,
-				price_stream_out
-			);
-			std::cout <<"Change on price level at the end: ";
-			std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
+		int expected_price = cache->back().first;
+		bool br = false;
+		while (true){
+			if (price_cur > cache->back().first){
+				// expected price maybe still behind, add this unexpected new price
+				br = true;
+				vol_diff = vol_cur;
+				target_price = price_cur;
+			}else if (price_cur == cache->back().first){
+				// hit the expected price
+				br = true;
+				vol_diff = vol_cur - cache->back().second;
+				target_price = price_cur;
+				cache->pop_back();
+			}else{
+				// expected price is removed from the book already, remove it untill get a new reasonable expected price
+				vol_diff = - cache->back().second;
+				target_price = cache->back().first;
+				cache->pop_back();
+			}
+			
+			if (vol_diff != 0){
+				orderin.price = (price_t)((float)(target_price)/MULTI); orderin.size = (qty_t)(vol_diff); orderin.orderID = 1000;
+				bid = 1;
+				odop = (vol_diff<0)? CHANGE: NEW;
+				suborder_book(
+					orderin,		// price size ID
+					odop,		// new change remove
+					bid,
+					req_read,
+					price_stream_out
+				);
+				std::cout <<"Change on price level at the end: ";
+				std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
+			}
+			if (br) break;
 		}
 	}
 	else if (price_cur > price_last_b) // price at the end overflow
 	{
-		cache_last[price_last_b] = vol_last_b;
-		std::cout << "price orderflow: "<< price_last_b << std::endl;
+		cache->push_back( make_pair(price_last_b, vol_last_b));
+		std::cout << "Price orderflow: "<< price_last_b << std::endl;
 	}
 	price_last_b = price_cur;
 	vol_last_b = vol_cur;
@@ -332,34 +351,50 @@ void check_update_last_price(
 	}
 	vol_cur = stoi(*(orderBook_split.end()-3-4*offset));
 
+	cache = &cache_lasta;
 	if (price_cur > price_last_a){
 		int vol_diff;
-		if (cache_last.find(price_cur) != cache_last.end()){
-			vol_diff = vol_cur - cache_last[price_cur];
-			cache_last.erase(price_cur);
-		}else{
-			vol_diff = vol_cur;
-		}
-
-		if (vol_diff != 0){
-			orderin.price = (price_t)((float)(price_cur)/MULTI); orderin.size = (qty_t)(vol_diff); orderin.orderID = 1000;
-			bid = 0;
-			odop = (vol_diff<0)? CHANGE: NEW;
-			suborder_book(
-				orderin,		// price size ID
-				odop,		// new change remove
-				bid,
-				req_read,
-				price_stream_out
-			);
-			std::cout <<"Change on price level at the end: ";
-			std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
+		bool br = false;
+		while (true){
+			if (price_cur < cache->back().first){
+				// expected price maybe still behind, add this unexpected new price
+				br = true;
+				vol_diff = vol_cur;
+				target_price = price_cur;
+			}else if (price_cur == cache->back().first){
+				// hit the expected price
+				br = true;
+				vol_diff = vol_cur - cache->back().second;
+				target_price = price_cur;
+				cache->pop_back();
+			}else{
+				// expected price is removed from the book already, remove it untill get a new reasonable expected price
+				vol_diff = - cache->back().second;
+				target_price = cache->back().first;
+				cache->pop_back();
+			}
+			
+			if (vol_diff != 0){
+				orderin.price = (price_t)((float)(target_price)/MULTI); orderin.size = (qty_t)(vol_diff); orderin.orderID = 1000;
+				bid = 0;
+				odop = (vol_diff<0)? CHANGE: NEW;
+				suborder_book(
+					orderin,		// price size ID
+					odop,		// new change remove
+					bid,
+					req_read,
+					price_stream_out
+				);
+				std::cout <<"Change on price level at the end: ";
+				std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
+			}
+			if (br) break;
 		}
 	}
 	else if (price_cur < price_last_a) // price at the end overflow
 	{
-		cache_last[price_last_a] = vol_last_a;
-		std::cout << "price orderflow: "<< price_last_a << std::endl;
+		cache->push_back( make_pair(price_last_a, vol_last_a));
+		std::cout << "Price orderflow: "<< price_last_a << std::endl;
 	}
 	price_last_a = price_cur;
 	vol_last_a = vol_cur;
