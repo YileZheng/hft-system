@@ -1,7 +1,7 @@
 #include "order_book.hpp"
 #include "order_book_core_IndexPop_opt.hpp"
 
-// #define __DEBUG__
+ #define __DEBUG__
 // order book for only one instrument
 // searching by calculating address index in the book, price depth
 // and a linked chain in each indexed slot
@@ -291,20 +291,20 @@ void update_book(
 								// miss: run to the end
 								book[last_bookIndex].next = stack_insert_index;
 								chain_new.next = INVALID_LINK;
-								// book[stack_insert_index] = chain_new;
+								book[stack_insert_index] = chain_new;
 								break;
 							}else{
 								if (cur_block.price == order_info.price){
 									// hit
-									chain_new.size += cur_block.size;
-									chain_new.next = cur_block.next;
-									// book[cur_bookIndex].size += order_info.size;
+//									chain_new.size += cur_block.size;
+//									chain_new.next = cur_block.next;
+									book[cur_bookIndex].size += order_info.size;
 									break;
 								}else if (is_after(cur_block.price, order_info.price, bid)){
 									// miss: already iterate to the one should be behind
 									book[last_bookIndex].next = stack_insert_index;
 									chain_new.next = cur_bookIndex;
-									// book[stack_insert_index] = chain_new;
+									book[stack_insert_index] = chain_new;
 									break;
 								}
 							}
@@ -312,7 +312,7 @@ void update_book(
 							cur_bookIndex = cur_block.next;
 							cur_block = book[cur_bookIndex];
 						}
-						book[stack_insert_index] = chain_new;
+//						book[stack_insert_index] = chain_new;
 					// the price should be in front of the head of the chain
 					}else{				// the coming price better than the one in book(meaning no orders in this price level), replace it and put it into the stack and connect the link to it;
 						book[stack_insert_index] = chain_head;

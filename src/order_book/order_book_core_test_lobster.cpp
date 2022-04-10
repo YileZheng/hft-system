@@ -19,7 +19,7 @@ using namespace std;
 
 vector<string> split_string(std::string s,std::string delimiter);
 string concat_string(vector<vector<price_depth>> pd, std::string delimiter, int level);
-void check_update_last_price(vector<string> orderBook_split);
+void check_update_last_price(vector<string> orderBook_split, int price_lasta_init, int price_lastb_init, int vol_lasta_init, int vol_lastb_init);
 
 int main()
 {
@@ -32,6 +32,7 @@ int main()
 	string pr, qty, oid, tstmp, ab, op;
 	ifstream new_file, message, orderbook;
 	ofstream result, answer;
+	string last_orderbook_line;
 
 	vector<double> stat[4]; // stat_add, stat_chg, stat_rmv;
 	clock_t start, end;
@@ -43,6 +44,8 @@ int main()
 	ap_uint<1> bid, req_read;
 	stream<price_depth> price_stream_out;
 	price_depth price_read;
+
+	int pricea_init, priceb_init, vola_init, volb_init;
 
 	
 	result.open(result_path, ios::out | ios::trunc);
@@ -81,14 +84,20 @@ int main()
 				price_stream_out
 			);
 		}
+
+		pricea_init = stoi(*(line_split.end()-4));
+		priceb_init = stoi(*(line_split.end()-2));
+		vola_init = stoi(*(line_split.end()-3));
+		volb_init = stoi(*(line_split.end()-1));
 	}
 
 	while (!message.eof())
 	{
+		last_orderbook_line = orderbook_line;
 		orderbook >> orderbook_line;
 		message >> line;
 		line_split = split_string(line, string(","));
-		check_update_last_price( split_string(orderbook_line, string(",")) );
+		check_update_last_price( split_string(orderbook_line, string(",")), pricea_init, priceb_init, vola_init, volb_init );
 
 		tstmp = line_split[0];
 		op = line_split[1];
@@ -119,7 +128,7 @@ int main()
 		}
 
 		bid = (ab == "1")? 1: 0;
-		req_read = ((id)%5 == 4)? 1: 0;
+		req_read = ((id)%5 == 0)? 1: 0;
 
 		start = clock();
 		suborder_book(
@@ -151,11 +160,13 @@ int main()
 		if (req_read==1){
 			stat[3].push_back(elapsed_ms);
 			string s = concat_string(resultbook, string(","), level);
-			if (s.compare(orderbook_line) != 0){
+			if (s.compare(last_orderbook_line) != 0){
 				std::cout << "Line: " <<id<<": Result orderbook not match !!!!!!!!" <<std::endl;
+				std::cout <<"Ground Truth  "<< last_orderbook_line << std::endl;
+				std::cout <<":OrderBook:   "<< s << std::endl;
 			}
 			result << s << endl;
-			answer << orderbook_line << endl;
+			answer << last_orderbook_line << endl;
 		}
 		else{
 			stat[(int)odop].push_back(elapsed_ms);
@@ -208,7 +219,7 @@ vector<string> split_string(
 		s.erase(0, pos + delimiter.length());
 	}
 	res.push_back(s);
-	std::cout << "Splitted line length: " << res.size() << std::endl;
+//	std::cout << "Splitted line length: " << res.size() << std::endl;
 	return res;
 }
 
@@ -240,23 +251,31 @@ string concat_string(
 				price = (ii == 0)? -9999999999: 9999999999;
 				size = 0;
 			}
-			ss<< price <<delimiter<< size <<delimiter;
+			ss<< price <<delimiter<< size;
+			if (!((i == level-1) && (ii == iter_v.size()-1))){
+				ss << delimiter;
+			}
 		}
 	}
 
-	for (int i=0; i<delimiter.size(); i++){
-		ss<< "\b";
-	}
+//	for (int i=0; i<delimiter.size(); i++){
+//		ss<< "\b";
+//	}
 
 	return std::string(ss.str());
 }
 
 void check_update_last_price(
-	vector<string> orderBook_split
+	vector<string> orderBook_split,
+	int price_lasta_init,
+	int price_lastb_init,
+	int vol_lasta_init,
+	int vol_lastb_init
+
 ){
 	static map<int, int> cache_last;
-	static int price_last_b, price_last_a;
-	static int vol_last_b, vol_last_a;
+	static int price_last_b=price_lastb_init, price_last_a=price_lasta_init;
+	static int vol_last_b=vol_lastb_init, vol_last_a=vol_lasta_init;
 
 	order orderin;
 	orderOp odop;
@@ -299,6 +318,7 @@ void check_update_last_price(
 	else if (price_cur > price_last_b) // price at the end overflow
 	{
 		cache_last[price_last_b] = vol_last_b;
+		std::cout << "price orderflow: "<< price_last_b << std::endl;
 	}
 	price_last_b = price_cur;
 	vol_last_b = vol_cur;
@@ -323,7 +343,7 @@ void check_update_last_price(
 
 		if (vol_diff != 0){
 			orderin.price = (price_t)((float)(price_cur)/MULTI); orderin.size = (qty_t)(vol_diff); orderin.orderID = 1000;
-			bid = 1;
+			bid = 0;
 			odop = (vol_diff<0)? CHANGE: NEW;
 			suborder_book(
 				orderin,		// price size ID
@@ -339,6 +359,7 @@ void check_update_last_price(
 	else if (price_cur < price_last_a) // price at the end overflow
 	{
 		cache_last[price_last_a] = vol_last_a;
+		std::cout << "price orderflow: "<< price_last_a << std::endl;
 	}
 	price_last_a = price_cur;
 	vol_last_a = vol_cur;
