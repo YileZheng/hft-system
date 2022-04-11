@@ -418,11 +418,12 @@ void update_book(
 		std::cout<<"& remove the empty chain ";
 #endif
 						book[bookIndex].price = 0;
-						if (bookIndex == base_bookIndex[bid_ask])	// if the chain is also at the top of the book, need to update base index and optimal price
+						if (bookIndex == base_bookIndex[bid_ask]){	// if the chain is also at the top of the book, need to update base index and optimal price
 #ifdef __DEBUG__
 		std::cout<<"& search new optimal backward ";
 #endif
 							update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
+						}
 					}
 					else{									// other blocks behind, put the next block in to the book, delete its original block place in stack
 						store_stack_hole(hole_fifo, stack_top, cur_block.next);
@@ -491,11 +492,12 @@ void update_book(
 		std::cout<<"& remove the empty chain ";
 #endif
 					book[bookIndex].price = 0;
-					if (bookIndex == base_bookIndex[bid_ask])	// if the chain is also at the top of the book, need to update base index and optimal price
+					if (bookIndex == base_bookIndex[bid_ask]){	// if the chain is also at the top of the book, need to update base index and optimal price
 #ifdef __DEBUG__
 		std::cout<<"& search new optimal backward ";
 #endif
 						update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
+					}
 				}
 				else{									// other blocks behind, put the next block in to the book, delete its original block place in stack
 					store_stack_hole(hole_fifo, stack_top, cur_block.next);
