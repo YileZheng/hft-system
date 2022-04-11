@@ -289,19 +289,19 @@ void check_update_last_price(
 	int offset, vol_cur, price_cur, target_price;
 	// bid at the end
 	offset = 0;
-	vol_cur, price_cur = stoi(*(orderBook_split.end()-2-4*offset)); 
+	price_cur = stoi(*(orderBook_split.end()-2-4*offset)); 
 	while (price_cur == -9999999999){
 		price_cur = stoi(*(orderBook_split.end()-2-4*(++offset)));
+		cache_lastb.clear();
 	}
 	vol_cur = stoi(*(orderBook_split.end()-1-4*offset));
 
 	cache = &cache_lastb;
 	if (price_cur < price_last_b){
 		int vol_diff;
-		int expected_price = cache->back().first;
 		bool br = false;
 		while (true){
-			if (price_cur > cache->back().first){
+			if ((price_cur > cache->back().first) || (cache->size()==0)){
 				// expected price maybe still behind, add this unexpected new price
 				br = true;
 				vol_diff = vol_cur;
@@ -347,9 +347,10 @@ void check_update_last_price(
 
 	// ask at the end
 	offset = 0;
-	vol_cur, price_cur = stoi(*(orderBook_split.end()-4-4*offset)); 
+	price_cur = stoi(*(orderBook_split.end()-4-4*offset)); 
 	while (price_cur == 9999999999){
 		price_cur = stoi(*(orderBook_split.end()-4-4*(++offset)));
+		cache_lasta.clear();
 	}
 	vol_cur = stoi(*(orderBook_split.end()-3-4*offset));
 
@@ -358,7 +359,7 @@ void check_update_last_price(
 		int vol_diff;
 		bool br = false;
 		while (true){
-			if (price_cur < cache->back().first){
+			if ((price_cur < cache->back().first) || (cache->size()==0)){
 				// expected price maybe still behind, add this unexpected new price
 				br = true;
 				vol_diff = vol_cur;

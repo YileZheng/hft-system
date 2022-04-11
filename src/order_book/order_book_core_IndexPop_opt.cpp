@@ -99,6 +99,11 @@ link_t get_stack_insert_index(
 	if (!hole_fifo.empty()){
 		addr_out = hole_fifo.read();
 	}else{
+#ifndef __SYNTHESIS__
+if (stack_top == INVALID_LINK){
+	printf("Order book maximum stack size reached !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+}
+#endif
 		addr_out = stack_top++;		// TODO: how to deal with overflow (default will not overflow)
 	}
 	return addr_out;
