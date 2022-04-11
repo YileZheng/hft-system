@@ -279,11 +279,11 @@ void check_update_last_price(
 	static vector<pair<int, int>> cache_lasta, cache_lastb;
 	static int price_last_b=price_lastb_init, price_last_a=price_lasta_init;
 	static int vol_last_b=vol_lastb_init, vol_last_a=vol_lasta_init;
+	static stream<price_depth> price_stream_out;
 
 	order orderin;
 	orderOp odop;
 	ap_uint<1> bid, req_read=0;
-	stream<price_depth> price_stream_out;
 	vector<pair<int, int>> *cache;
 
 	int offset, vol_cur, price_cur, target_price;
