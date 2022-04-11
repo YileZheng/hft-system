@@ -172,6 +172,8 @@ int main()
 			stat[(int)odop].push_back(elapsed_ms);
 		}
 		
+		std::cout<<std::endl;
+		
 	}
 	answer.close();
 	result.close();

@@ -142,6 +142,11 @@ void update_optimal(
 	bookIndex_tmp += book_side_offset;
 	cur_price = book[bookIndex_tmp].price;
 	int i;
+#ifdef __DEBUG__
+	std::cout<<"DEBUG - {search new optimal backward} ";
+	std::cout<<" origin base: "<<base_bookIndex[bid_ask];
+	std::cout<<" origin optimal: "<<optimal_prices[bid_ask];
+#endif
 	SEARCH_NEXT_OPTIMAL:
 	for (i=2; i<=RANGE; i++){		// search backward in the book starting with orginal base_bookIndex
 		if (cur_price != 0){		// find valid slot
@@ -160,6 +165,11 @@ void update_optimal(
 		// bookIndex_tmp_get = bookIndex_tmp;
 		// is_valid = indexprice_valid(book, bookIndex_tmp_get);
 	}
+#ifdef __DEBUG__
+	std::cout<<" new base:"<<base_bookIndex[bid_ask];
+	std::cout<<" new price: "<<optimal_prices[bid_ask];
+	std::cout<<std::endl;
+#endif
 }
 
 addr_index get_maintain_bookIndex(
