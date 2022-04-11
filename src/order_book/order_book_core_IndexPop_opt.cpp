@@ -184,24 +184,25 @@ addr_index get_maintain_bookIndex(
 	if (direction == NEW){
 		is_better_price = is_after(optimal_prices[bid_ask], order_info.price, bid);
 		if (is_better_price){
-			base_bookIndex_tmp = base_bookIndex[bid_ask] - get_bookindex_offset(order_info.price, optimal_prices[bid_ask], bid);
+			addr_index optimal_offset = get_bookindex_offset(order_info.price, optimal_prices[bid_ask], bid);
+			base_bookIndex_tmp = base_bookIndex[bid_ask] - optimal_offset;
 	#ifdef __DEBUG__
 			std::cout<<"DEBUG - {better optimal price} ";
-			std::cout<<" base: "<<base_bookIndex[bid_ask];
+			std::cout<<" origin base: "<<base_bookIndex[bid_ask];
 			std::cout<<" better base:"<<base_bookIndex_tmp;
-			std::cout<<" offset from base: "<<get_bookindex_offset(order_info.price, optimal_prices[bid_ask], bid);
+			std::cout<<" offset from origin base: "<<get_bookindex_offset(order_info.price, optimal_prices[bid_ask], bid);
 			std::cout<<" order price: "<<order_info.price;
-			std::cout<<" optimal "<<optimal_prices[bid_ask];
+			std::cout<<" origin optimal "<<optimal_prices[bid_ask];
 			std::cout<<std::endl;
 	#endif
-			optimal_prices[bid_ask] = (bid)? (price_t)(optimal_prices[bid_ask]+(price_t)(UNIT*SLOTSIZE)): (price_t)(optimal_prices[bid_ask]-(price_t)(UNIT*SLOTSIZE));
+			optimal_prices[bid_ask] = (bid)? (price_t)(optimal_prices[bid_ask]+(price_t)(optimal_offset*UNIT*SLOTSIZE)): (price_t)(optimal_prices[bid_ask]-(price_t)(optimal_offset*UNIT*SLOTSIZE));
 	#ifdef __DEBUG__
 			std::cout<<"DEBUG - {better optimal price} ";
-			std::cout<<" base: "<<base_bookIndex[bid_ask];
+			std::cout<<" origin base: "<<base_bookIndex[bid_ask];
 			std::cout<<" better base:"<<base_bookIndex_tmp;
-			std::cout<<" offset from base: "<<get_bookindex_offset(order_info.price, optimal_prices[bid_ask], bid);
+			std::cout<<" offset from origin base: "<<get_bookindex_offset(order_info.price, optimal_prices[bid_ask], bid);
 			std::cout<<" order price: "<<order_info.price;
-			std::cout<<" optimal "<<optimal_prices[bid_ask];
+			std::cout<<" new optimal "<<optimal_prices[bid_ask];
 			std::cout<<std::endl;
 	#endif
 			// empty least optimal price levels
@@ -227,7 +228,7 @@ addr_index get_maintain_bookIndex(
 				}
 				// TODO: may also put into stack memory
 			}
-			base_bookIndex[bid_ask] =(base_bookIndex_tmp<0)? base_bookIndex_tmp+RANGE: base_bookIndex_tmp;  // TODO: still <0 ?
+			base_bookIndex[bid_ask] = (base_bookIndex_tmp<0)? base_bookIndex_tmp+RANGE: base_bookIndex_tmp;  // TODO: still <0 ?
 		}
 	}
 
@@ -284,7 +285,6 @@ void update_book(
 #endif
 					book[bookIndex].size = chain_head.size + order_info.size; 
 				}else{
-					stack_insert_index = get_stack_insert_index(hole_fifo, stack_top);
 					// when the price should be located somewhere after this block on this chain, 
 					// search the chain: 
 					// price hit: add up size; 
@@ -301,6 +301,7 @@ void update_book(
 	std::cout<<"DEBUG - NEW - insert to the chain tail ";
 	std::cout<<std::endl;
 #endif
+								stack_insert_index = get_stack_insert_index(hole_fifo, stack_top);
 								book[last_bookIndex].next = stack_insert_index;
 								chain_new.next = INVALID_LINK;
 								book[stack_insert_index] = chain_new;
@@ -322,6 +323,7 @@ void update_book(
 	std::cout<<std::endl;
 #endif
 									// miss: already iterate to the one should be behind
+									stack_insert_index = get_stack_insert_index(hole_fifo, stack_top);
 									book[last_bookIndex].next = stack_insert_index;
 									chain_new.next = cur_bookIndex;
 									book[stack_insert_index] = chain_new;
@@ -332,7 +334,6 @@ void update_book(
 							cur_bookIndex = cur_block.next;
 							cur_block = book[cur_bookIndex];
 						}
-//						book[stack_insert_index] = chain_new;
 					// the price should be in front of the head of the chain
 					}else{				// the coming price better than the one in book(meaning no orders in this price level), replace it and put it into the stack and connect the link to it;
 #ifdef __DEBUG__
