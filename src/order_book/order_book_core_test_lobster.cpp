@@ -279,6 +279,7 @@ void check_update_last_price(
 	static vector<pair<int, int>> cache_lasta, cache_lastb;
 	static int price_last_b=price_lastb_init, price_last_a=price_lasta_init;
 	static int vol_last_b=vol_lastb_init, vol_last_a=vol_lasta_init;
+	const int cache_max_len = 10;
 
 	order orderin;
 	orderOp odop;
@@ -301,22 +302,30 @@ void check_update_last_price(
 		int vol_diff;
 		bool br = false;
 		while (true){
-			if ((price_cur > cache->back().first) || (cache->size()==0)){
-				// expected price maybe still behind, add this unexpected new price
-				br = true;
-				vol_diff = vol_cur;
-				target_price = price_cur;
-			}else if (price_cur == cache->back().first){
-				// hit the expected price
-				br = true;
-				vol_diff = vol_cur - cache->back().second;
-				target_price = price_cur;
-				cache->pop_back();
-			}else{
-				// expected price is removed from the book already, remove it untill get a new reasonable expected price
-				vol_diff = - cache->back().second;
-				target_price = cache->back().first;
-				cache->pop_back();
+			if (cache->size() > cache_max_len){
+					vol_diff = - cache->front().second;
+					target_price = cache->front().first;
+					cache->erase(cache->begin());
+			}
+			else
+			{
+				if ((price_cur > cache->back().first) || (cache->size()==0)){
+					// expected price maybe still behind, add this unexpected new price
+					br = true;
+					vol_diff = vol_cur;
+					target_price = price_cur;
+				}else if (price_cur == cache->back().first){
+					// hit the expected price
+					br = true;
+					vol_diff = vol_cur - cache->back().second;
+					target_price = price_cur;
+					cache->pop_back();
+				}else{
+					// expected price is removed from the book already, remove it untill get a new reasonable expected price
+					vol_diff = - cache->back().second;
+					target_price = cache->back().first;
+					cache->pop_back();
+				}
 			}
 			
 			if (vol_diff != 0){
@@ -359,22 +368,30 @@ void check_update_last_price(
 		int vol_diff;
 		bool br = false;
 		while (true){
-			if ((price_cur < cache->back().first) || (cache->size()==0)){
-				// expected price maybe still behind, add this unexpected new price
-				br = true;
-				vol_diff = vol_cur;
-				target_price = price_cur;
-			}else if (price_cur == cache->back().first){
-				// hit the expected price
-				br = true;
-				vol_diff = vol_cur - cache->back().second;
-				target_price = price_cur;
-				cache->pop_back();
-			}else{
-				// expected price is removed from the book already, remove it untill get a new reasonable expected price
-				vol_diff = - cache->back().second;
-				target_price = cache->back().first;
-				cache->pop_back();
+			if (cache->size() > cache_max_len){
+					vol_diff = - cache->front().second;
+					target_price = cache->front().first;
+					cache->erase(cache->begin());
+			}
+			else
+			{
+				if ((price_cur < cache->back().first) || (cache->size()==0)){
+					// expected price maybe still behind, add this unexpected new price
+					br = true;
+					vol_diff = vol_cur;
+					target_price = price_cur;
+				}else if (price_cur == cache->back().first){
+					// hit the expected price
+					br = true;
+					vol_diff = vol_cur - cache->back().second;
+					target_price = price_cur;
+					cache->pop_back();
+				}else{
+					// expected price is removed from the book already, remove it untill get a new reasonable expected price
+					vol_diff = - cache->back().second;
+					target_price = cache->back().first;
+					cache->pop_back();
+				}
 			}
 			
 			if (vol_diff != 0){
