@@ -354,6 +354,7 @@ void update_book(
 	std::cout<<"DEBUG - NEW - insert to the front of the chain head ";
 	std::cout<<std::endl;
 #endif
+						stack_insert_index = get_stack_insert_index(hole_fifo, stack_top);
 						book[stack_insert_index] = chain_head;
 						chain_new.next = stack_insert_index;
 						book[bookIndex] = chain_new; 
