@@ -129,6 +129,7 @@ int main()
 
 		bid = (ab == "1")? 1: 0;
 		req_read = ((id)%5 == 0)? 1: 0;
+		std::cout<<"Line: " << id << " OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
 
 		start = clock();
 		suborder_book(
@@ -141,7 +142,6 @@ int main()
 		end = clock();
 		elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000000;
 
-		std::cout<<"Line: " << id << " OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
 		id++; 
 
 		vector<vector<price_depth>> resultbook;
@@ -321,6 +321,8 @@ void check_update_last_price(
 				orderin.price = (price_t)((float)(target_price)/MULTI); orderin.size = (qty_t)(vol_diff); orderin.orderID = 1000;
 				bid = 1;
 				odop = (vol_diff<0)? CHANGE: NEW;
+				std::cout <<"Change on price level at the end: ";
+				std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
 				suborder_book(
 					orderin,		// price size ID
 					odop,		// new change remove
@@ -328,8 +330,6 @@ void check_update_last_price(
 					req_read,
 					price_stream_out
 				);
-				std::cout <<"Change on price level at the end: ";
-				std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
 			}
 			if (br) break;
 		}
@@ -378,6 +378,8 @@ void check_update_last_price(
 				orderin.price = (price_t)((float)(target_price)/MULTI); orderin.size = (qty_t)(vol_diff); orderin.orderID = 1000;
 				bid = 0;
 				odop = (vol_diff<0)? CHANGE: NEW;
+				std::cout <<"Change on price level at the end: ";
+				std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
 				suborder_book(
 					orderin,		// price size ID
 					odop,		// new change remove
@@ -385,8 +387,6 @@ void check_update_last_price(
 					req_read,
 					price_stream_out
 				);
-				std::cout <<"Change on price level at the end: ";
-				std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
 			}
 			if (br) break;
 		}

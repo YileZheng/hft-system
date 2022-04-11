@@ -52,6 +52,9 @@ void book_read(
 				ind = (base_bookIndex[side]+i>=RANGE)? base_bookIndex[side]+i-RANGE: base_bookIndex[side]+i;
 				ind += book_side_offset;
 				cur_block = book[ind];
+#ifdef __DEBUG__
+	int show_ind = ind;
+#endif
 				if(cur_block.price != 0){
 					READ_BOOK_LEVEL_LINK:
 					for (int j=0; j<SLOTSIZE; j++){
@@ -60,7 +63,8 @@ void book_read(
 						feed_stream_out.write(lvl_out);
 #ifdef __DEBUG__
 	std::cout<<"DEBUG - ";
-	std::cout<<" x: "<<ind<<" y: "<<j;
+	std::cout<<" x: "<<ind<<" y: "<<show_ind << " price: " << cur_block.price;
+	show_ind = cur_block.next;
 	std::cout<<std::endl;
 #endif
 						if (cur_block.next != INVALID_LINK)
@@ -356,25 +360,27 @@ void update_book(
 			// search block with the same price
 			BOOK_CHANGE_SEARCH_LOC:
 			for (i_block=0; i_block<SLOTSIZE; i_block++){
-#ifdef __DEBUG__
-		std::cout<<"DEBUG -";
-		std::cout<<" "<<cur_block.price;
-		std::cout<<std::endl;
-#endif
+// #ifdef __DEBUG__
+// 		std::cout<<"DEBUG -";
+// 		std::cout<<" "<<cur_block.price;
+// 		std::cout<<std::endl;
+// #endif
 				if (cur_block.price == order_info.price){
 #ifdef __DEBUG__
-		std::cout<<"DEBUG -";
-		std::cout<<" "<<cur_block.size;
-		std::cout<<" "<<order_info.size;
+		std::cout<<"DEBUG - ";
+		std::cout<<"CHANGE - hit price "<<cur_block.price;
+		std::cout<<" origin size "<<cur_block.size;
+		std::cout<<" order size "<<order_info.size;
+		std::cout<<" at index "<<cur_bookIndex;
 		std::cout<<std::endl;
 #endif
 					cur_block.size += order_info.size;
-#ifdef __DEBUG__
-	std::cout<<"DEBUG -";
-	std::cout<<" "<<cur_block.size;
-	std::cout<<" "<<order_info.size;
-	std::cout<<std::endl;
-#endif
+// #ifdef __DEBUG__
+// 	std::cout<<"DEBUG -";
+// 	std::cout<<" "<<cur_block.size;
+// 	std::cout<<" "<<order_info.size;
+// 	std::cout<<std::endl;
+// #endif
 					break;
 				}
 				last_bookIndex = cur_bookIndex;
@@ -390,18 +396,37 @@ void update_book(
 			}
 			// if block is clear, delete from the chain
 			if (cur_block.size <= 0){
+#ifdef __DEBUG__
+		std::cout<<"DEBUG - CHANGE - remove empty block ";
+#endif
 				if (i_block == 0) {		// the block is the first block, meaning the chain will be empty
+#ifdef __DEBUG__
+		std::cout<<"at the head of the chain ";
+#endif
 					if (cur_block.next == INVALID_LINK){	// the only block on chain, set price to 0 indicating no chain is available
+#ifdef __DEBUG__
+		std::cout<<"& remove the empty chain ";
+#endif
 						book[bookIndex].price = 0;
 						if (bookIndex == base_bookIndex[bid_ask])	// if the chain is also at the top of the book, need to update base index and optimal price
+#ifdef __DEBUG__
+		std::cout<<"& search new optimal backward ";
+#endif
 							update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
 					}
 					else{									// other blocks behind, put the next block in to the book, delete its original block place in stack
 						store_stack_hole(hole_fifo, stack_top, cur_block.next);
 						book[cur_bookIndex] = book[cur_block.next];
 					}
+#ifdef __DEBUG__
+		std::cout<<std::endl;
+#endif
 				}
 				else{					// block is not the head of the chain, change links
+#ifdef __DEBUG__
+		std::cout<<"in the middle or tail of the chain ";
+		std::cout<<std::endl;
+#endif
 					store_stack_hole(hole_fifo, stack_top, cur_bookIndex);	// mark down the location of the hole
 					book[last_bookIndex].next = cur_block.next;
 				}
@@ -421,6 +446,14 @@ void update_book(
 			BOOK_REMOVE_SEARCH_LOC:
 			for (i_block=0; i_block<SLOTSIZE; i_block++){
 				if (cur_block.price == order_info.price)
+#ifdef __DEBUG__
+		std::cout<<"DEBUG - ";
+		std::cout<<"REMOVE - hit price "<<cur_block.price;
+		std::cout<<" origin size "<<cur_block.size;
+		std::cout<<" order size "<<order_info.size;
+		std::cout<<" at index "<<cur_bookIndex;
+		std::cout<<std::endl;
+#endif
 					break;
 				
 				last_bookIndex = cur_bookIndex;
@@ -434,19 +467,39 @@ void update_book(
 					printf("Price not found in the book!!!!");  // TODO
 #endif
 			}
+
+#ifdef __DEBUG__
+		std::cout<<"DEBUG - REMOVE - remove block ";
+#endif
 			// delete from the chain
 			if (i_block == 0) {		// the block is the first block, meaning the chain will be empty
+#ifdef __DEBUG__
+		std::cout<<"at the head of the chain ";
+#endif
 				if (cur_block.next == INVALID_LINK){	// the only block on chain, set price to 0 indicating no chain is available
+#ifdef __DEBUG__
+		std::cout<<"& remove the empty chain ";
+#endif
 					book[bookIndex].price = 0;
 					if (bookIndex == base_bookIndex[bid_ask])	// if the chain is also at the top of the book, need to update base index and optimal price
+#ifdef __DEBUG__
+		std::cout<<"& search new optimal backward ";
+#endif
 						update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
 				}
 				else{									// other blocks behind, put the next block in to the book, delete its original block place in stack
 					store_stack_hole(hole_fifo, stack_top, cur_block.next);
 					book[cur_bookIndex] = book[cur_block.next];
 				}
+#ifdef __DEBUG__
+std::cout<<std::endl;
+#endif
 			}
 			else{					// block is not the head of the chain, change links
+#ifdef __DEBUG__
+		std::cout<<"in the middle or tail of the chain ";
+		std::cout<<std::endl;
+#endif
 				store_stack_hole(hole_fifo, stack_top, cur_bookIndex);	// mark down the location of the hole
 				book[last_bookIndex].next = cur_block.next;
 			}
