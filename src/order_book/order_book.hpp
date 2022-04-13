@@ -47,6 +47,13 @@ struct decoded_message {
 };                          /*			  2 - INCOMING ASK 	3 - INCOMING BID */
                             /*		   	  4 - REMOVE ASK	5 - REMOVE BID	 */
 
+struct orderMessage
+{
+    order order_info;
+    orderOp operation;
+    ap_uint<1> side;
+};
+
 struct order
 {
     price_t price; /*Order price as an 20Q16 fixed-point number, upto 1'048'576 */

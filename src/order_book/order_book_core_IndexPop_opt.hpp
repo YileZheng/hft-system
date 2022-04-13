@@ -22,10 +22,12 @@ bool is_after(
 );
 
 void book_read(
-	ap_uint<1> &req_read,
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],
 	addr_index base_bookIndex[2],
-	stream<price_depth> &feed_stream_out
+	stream<price_depth> &feed_stream_out,
+	
+	ap_uint<1> read_en,
+	ap_uint<1> &read_DONE
 );
 
 void store_stack_hole(
@@ -84,10 +86,28 @@ void update_book(
 	price_t optimal_prices[2]
 );
 
-void suborder_book(
-	order &order_info,		// price size ID
-	orderOp &direction,		// new change remove
-	ap_uint<1> &bid,
+void subbook_controller(
 	ap_uint<1> &req_read_in,
+	ap_uint<1> &read_en,
+	ap_uint<1> &read_DONE,
+	ap_uint<1> &update_en
+);
+
+void book_maintain(
+	stream<orderMessage> &order_message,
+	price_depth_chain book[RANGE*2+CHAIN_LEVELS],		// 0 bid 1 ask
+
+	stream<link_t> &hole_fifo,
+	link_t &stack_top,
+
+	addr_index base_bookIndex[2],
+	price_t optimal_prices[2],
+
+	ap_uint<1> &update_en
+);
+
+void suborder_book(
+	stream<orderMessage> &order_message,
+	ap_uint<1> req_read_in,
 	stream<price_depth> &feed_stream_out
 );

@@ -29,18 +29,22 @@ bool is_after(
 }
 
 void book_read(
-	ap_uint<1> &req_read_in,
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],
 	addr_index base_bookIndex[2],
-	stream<price_depth> &feed_stream_out
+	stream<price_depth> &feed_stream_out,
+	
+	ap_uint<1> read_en,
+	ap_uint<1> &read_DONE
 ){
 	price_depth dummy;
 	dummy.price = 0;
 	dummy.size = 0;
 	price_depth lvl_out;
 	price_depth_chain cur_block;
-	ap_uint<1> req_read = req_read_in;
+	ap_uint<1> req_read = read_en;
 	int ind;
+
+	if (read_DONE) read_DONE = 0;
 
 	if(req_read == 1){
 		req_read = 0;
@@ -75,6 +79,7 @@ void book_read(
 			}
 			feed_stream_out.write(dummy);
 		}
+		read_DONE = 1;
 	}
 }
 
@@ -175,6 +180,22 @@ void update_optimal(
 	std::cout<<" new price: "<<optimal_prices[bid_ask];
 	std::cout<<std::endl;
 #endif
+}
+
+void subbook_controller(
+	ap_uint<1> &req_read_in,
+	ap_uint<1> &read_en,
+	ap_uint<1> &read_DONE,
+	ap_uint<1> &update_en
+){
+	// when read signal in, halt the book update and resume book read operation
+	if (read_en){
+		read_en = 0;
+	} else if (req_read_in){
+		read_en = 1;
+		update_en = 0;
+	}
+	if (read_DONE) update_en = 1;
 }
 
 addr_index get_maintain_bookIndex(
@@ -550,54 +571,104 @@ std::cout<<std::endl;
 #endif
 }
 
+void book_maintain(
+	stream<orderMessage> &order_message,
+	price_depth_chain book[RANGE*2+CHAIN_LEVELS],		// 0 bid 1 ask
+
+	stream<link_t> &hole_fifo,
+	link_t &stack_top,
+
+	addr_index base_bookIndex[2],
+	price_t optimal_prices[2],
+
+	ap_uint<1> &update_en
+){
+
+	if (update_en){
+		addr_index bookIndex;
+		order order_info;
+		ap_uint<1> bid;
+		orderOp direction;		// new change remove
+		orderMessage order_msg;
+
+		while (! order_message.empty()){
+			order_msg = order_message.read();
+			order_info = order_msg.order_info;
+			bid = order_msg.side;
+			direction = order_msg.operation;
+
+			bookIndex = get_maintain_bookIndex(
+					order_info,
+					bid,
+					direction,		// new change remove
+					book,		// 0 bid 1 ask
+
+					base_bookIndex,
+					optimal_prices,
+
+					hole_fifo,
+					stack_top
+				);
+
+			update_book(
+					order_info,
+					bid,
+					direction,		// new change remove
+					book,		// 0 bid 1 ask
+
+					hole_fifo,
+					stack_top,
+
+					bookIndex,
+					base_bookIndex,
+					optimal_prices
+				);
+		}
+	}
+}
+
+
 void suborder_book(
-	order &order_info,		// price size ID
-	orderOp &direction,		// new change remove
-	ap_uint<1> &bid,
-	ap_uint<1> &req_read_in,
+	stream<orderMessage> &order_message,
+	ap_uint<1> req_read_in,
 	stream<price_depth> &feed_stream_out
 ){
 
+	// book
 	static price_depth_chain book[RANGE*2+CHAIN_LEVELS];		// 0 bid 1 ask
 	static price_t optimal_prices[2] = {0, 0};
 	static addr_index base_bookIndex[2] = {0, 0};
 
-	// static link_t hole_fifo[CHAIN_LEVELS];
+	// hole management
 	static stream<link_t> hole_fifo;
-	// static int hole_fifo_head = 0;
-	// static int hole_fifo_tail = 0;
 	static link_t stack_top = RANGE*2;
 
-	// side
-	addr_index bookIndex;
+	// control signal
+	static ap_uint<1> read_en = 0;
+	static ap_uint<1> read_DONE = 0;
+	static ap_uint<1> update_en = 1;
+
+	subbook_controller(
+		req_read_in,
+		read_en,
+		read_DONE,
+		update_en
+	);
 
 	// read process
-	book_read(req_read_in, book, base_bookIndex, feed_stream_out); 
+	book_read(book, base_bookIndex, feed_stream_out, read_en, read_DONE); 
+	
+	book_maintain(
+		order_message,
+		book,		// 0 bid 1 ask
 
-	bookIndex = get_maintain_bookIndex(
-			order_info,
-			bid,
-			direction,		// new change remove
-			book,		// 0 bid 1 ask
+		hole_fifo,
+		stack_top,
 
-			base_bookIndex,
-			optimal_prices,
+		base_bookIndex,
+		optimal_prices,
 
-			hole_fifo,
-			stack_top
-		);
+		update_en
+	);
 
-	update_book(
-			order_info,
-			bid,
-			direction,		// new change remove
-			book,		// 0 bid 1 ask
-
-			hole_fifo,
-			stack_top,
-
-			bookIndex,
-			base_bookIndex,
-			optimal_prices
-		);
 }

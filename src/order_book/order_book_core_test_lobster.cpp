@@ -43,7 +43,9 @@ int main()
 	orderOp odop;
 	ap_uint<1> bid, req_read;
 	stream<price_depth> price_stream_out;
+	stream<orderMessage> stream_in;
 	price_depth price_read;
+	orderMessage input_in;
 
 	int pricea_init, priceb_init, vola_init, volb_init;
 
@@ -76,14 +78,16 @@ int main()
 			qty = *(++it);
 			orderin.price = (price_t)(stof(pr)/MULTI); orderin.size = (qty_t)(stof(qty)); orderin.orderID = (size_t)1;
 			bid++;
-			suborder_book(
-				orderin,		// price size ID
-				odop,		// new change remove
-				bid,
-				req_read,
-				price_stream_out
-			);
+			input_in.order_info = orderin;
+			input_in.operation = odop;
+			input_in.side = bid;
+			stream_in.write(input_in);
 		}
+		suborder_book(
+			stream_in,
+			req_read,
+			price_stream_out
+		);
 
 		pricea_init = stoi(*(line_split.end()-4));
 		priceb_init = stoi(*(line_split.end()-2));
@@ -132,10 +136,12 @@ int main()
 		std::cout<<"Line: " << id << " OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
 
 		start = clock();
+		input_in.order_info = orderin;
+		input_in.operation = odop;
+		input_in.side = bid;
+		stream_in.write(input_in);
 		suborder_book(
-			orderin,		// price size ID
-			odop,		// new change remove
-			bid,
+			stream_in,
 			req_read,
 			price_stream_out
 		);
@@ -280,11 +286,13 @@ void check_update_last_price(
 	static int price_last_b=price_lastb_init, price_last_a=price_lasta_init;
 	static int vol_last_b=vol_lastb_init, vol_last_a=vol_lasta_init;
 	static stream<price_depth> price_stream_out;
+	static stream<orderMessage> stream_in;
 	const int cache_max_len = 10;
 
 	order orderin;
 	orderOp odop;
 	ap_uint<1> bid, req_read=0;
+	orderMessage input_in;
 	vector<pair<int, int>> *cache;
 
 	int offset, vol_cur, price_cur, target_price;
@@ -334,13 +342,10 @@ void check_update_last_price(
 				odop = (vol_diff<0)? CHANGE: NEW;
 				std::cout <<"Change on price level at the end: ";
 				std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
-				suborder_book(
-					orderin,		// price size ID
-					odop,		// new change remove
-					bid,
-					req_read,
-					price_stream_out
-				);
+				input_in.order_info = orderin;
+				input_in.operation = odop;
+				input_in.side = bid;
+				stream_in.write(input_in);
 			}
 			if (br) break;
 		}
@@ -400,13 +405,10 @@ void check_update_last_price(
 				odop = (vol_diff<0)? CHANGE: NEW;
 				std::cout <<"Change on price level at the end: ";
 				std::cout<<" OrderID: "<<orderin.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< orderin.price <<" Volume: "<< orderin.size <<" Read: "<<req_read<<endl;
-				suborder_book(
-					orderin,		// price size ID
-					odop,		// new change remove
-					bid,
-					req_read,
-					price_stream_out
-				);
+				input_in.order_info = orderin;
+				input_in.operation = odop;
+				input_in.side = bid;
+				stream_in.write(input_in);
 			}
 			if (br) break;
 		}
@@ -418,5 +420,10 @@ void check_update_last_price(
 	}
 	price_last_a = price_cur;
 	vol_last_a = vol_cur;
-
+	
+	suborder_book(
+		stream_in,
+		req_read,
+		price_stream_out
+	);
 }
