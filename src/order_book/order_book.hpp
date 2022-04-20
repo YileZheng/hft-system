@@ -10,10 +10,10 @@
 
 using namespace hls;
 
-typedef ap_uint<64> Time;	/*Time stamp for round-trip latency measurements*/
+typedef ap_uint<48> Time;	/*Time stamp for round-trip latency measurements*/
 
 typedef signed int addr_index;
-typedef ap_uint<48> symbol_t; 
+typedef ap_uint<64> symbol_t; 
 typedef ap_ufixed<52, 32> price_t; 
 typedef ap_int<32> qty_t;        /*Order size in hundreds*/
 typedef ap_uint<32> orderID_t;    /*Unique ID for each order*/
@@ -62,19 +62,30 @@ struct orderMessage
     ap_uint<1> side;
 };
 
+struct Message{
+    Time timestamp;
+	symbol_t symbol;		/*Stock symbol of maximum 6 characters */
+    price_t price; /*Order price as an 20Q16 fixed-point number, upto 1'048'576 */
+    qty_t size;        /*Order size in hundreds*/
+    orderID_t orderID;    /*Unique ID for each order*/
+    orderOp operation;
+    ap_uint<1> side;
+};
+
 struct sub_order
 {
-    qty_t size;        /*Order size in hundreds*/
+    qty_t size;        
     orderID_t orderID;    /*Unique ID for each order*/
 };   
 
 struct price_depth{
-    price_t price; /*Order price as an 20Q8 fixed-point number, upto 1'048'576 */
-    qty_t size;        /*Order size in hundreds*/
+    price_t price; 
+    qty_t size;        
 	};
+
 struct price_depth_chain{
-    price_t price; /*Order price as an 20Q8 fixed-point number, upto 1'048'576 */
-    qty_t size;        /*Order size in hundreds*/
+    price_t price; 
+    qty_t size;        
     link_t next;
 	};
 

@@ -1,4 +1,5 @@
 #include <hls_math.h>
+#include "order_book.hpp"
 #include "utils.hpp"
 
 void suborder_book(

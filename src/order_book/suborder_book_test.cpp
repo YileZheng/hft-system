@@ -7,10 +7,7 @@
 #include<numeric>
 #include<map>
 
-#include "order_book.hpp"
 #include "suborder_book.hpp"
-// #include "order_book_core.hpp"
-// #include "order_book_core_IndexPop.hpp"
 
 using namespace std;
 
