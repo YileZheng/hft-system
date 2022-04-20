@@ -7,7 +7,7 @@
 
 
 void suborder_book(
-	stream<orderMessage> &order_message,
+	orderMessage order_message,
 	ap_uint<1> req_read_in,
 	stream<price_depth> &feed_stream_out
 ){

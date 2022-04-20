@@ -2,7 +2,7 @@
 #include "utils.hpp"
 
 void suborder_book(
-	stream<orderMessage> &order_message,
+	orderMessage order_message,
 	ap_uint<1> req_read_in,
 	stream<price_depth> &feed_stream_out
 );
@@ -20,7 +20,8 @@ class SubOrderBook{
 	addr_index base_bookIndex[2] = {0, 0};
 
 	// hole management
-	stream<link_t> hole_fifo;
+	stream<link_t, CHAIN_LEVELS> hole_fifo;
+	stream<orderMessage, 20> order_message_fifo;		//TODO
 	link_t stack_top = RANGE*2;
 
 	// control signal
@@ -80,11 +81,11 @@ class SubOrderBook{
 
 	// orderbook update
 	void book_maintain(
-		stream<orderMessage> &order_message
+		orderMessage order_message
 	);
 
 	void suborder_book(
-		stream<orderMessage> &order_message,
+		orderMessage order_message,
 		ap_uint<1> req_read_in,
 		stream<price_depth> &feed_stream_out
 	);
@@ -538,18 +539,19 @@ std::cout<<std::endl;
 
 template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::book_maintain(
-	stream<orderMessage> &order_message
+	orderMessage order_message
 ){
 
+	order_message_fifo.write(order_message);
+	
 	if (update_en){
 		addr_index bookIndex;
 		order order_info;
 		ap_uint<1> bid;
 		orderOp direction;		// new change remove
 		orderMessage order_msg;
-
-		while (! order_message.empty()){
-			order_msg = order_message.read();
+		while (! order_message_fifo.empty()){
+			order_msg = order_message_fifo.read();
 			order_info = order_msg.order_info;
 			bid = order_msg.side;
 			direction = order_msg.operation;
@@ -642,7 +644,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 // main management
 template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::suborder_book(
-	stream<orderMessage> &order_message,
+	orderMessage order_message,
 	ap_uint<1> req_read_in,
 	stream<price_depth> &feed_stream_out
 ){

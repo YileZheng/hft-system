@@ -8,9 +8,9 @@
 #include<map>
 
 #include "order_book.hpp"
+#include "suborder_book.hpp"
 // #include "order_book_core.hpp"
 // #include "order_book_core_IndexPop.hpp"
-#include "suborder_book.hpp"
 
 using namespace std;
 
@@ -84,13 +84,13 @@ int main()
 			input_in.order_info = orderin;
 			input_in.operation = odop;
 			input_in.side = bid;
-			stream_in.write(input_in);
+			// stream_in.write(input_in);
+			suborder_book(
+				input_in,
+				req_read,
+				price_stream_out
+			);
 		}
-		suborder_book(
-			stream_in,
-			req_read,
-			price_stream_out
-		);
 
 		pricea_init = stoi(*(line_split.end()-4));
 		priceb_init = stoi(*(line_split.end()-2));
@@ -104,7 +104,7 @@ int main()
 		orderbook >> orderbook_line;
 		message >> line;
 		line_split = split_string(line, string(","));
-		check_update_last_price(dut, split_string(orderbook_line, string(",")), pricea_init, priceb_init, vola_init, volb_init );
+		check_update_last_price(split_string(orderbook_line, string(",")), pricea_init, priceb_init, vola_init, volb_init );
 
 		tstmp = line_split[0];
 		op = line_split[1];
@@ -142,9 +142,9 @@ int main()
 		input_in.order_info = orderin;
 		input_in.operation = odop;
 		input_in.side = bid;
-		stream_in.write(input_in);
+		// stream_in.write(input_in);
 		suborder_book(
-			stream_in,
+			input_in,
 			req_read,
 			price_stream_out
 		);
@@ -348,7 +348,12 @@ void check_update_last_price(
 				input_in.order_info = orderin;
 				input_in.operation = odop;
 				input_in.side = bid;
-				stream_in.write(input_in);
+				suborder_book(
+					input_in,
+					req_read,
+					price_stream_out
+				);
+				// stream_in.write(input_in);
 			}
 			if (br) break;
 		}
@@ -411,7 +416,12 @@ void check_update_last_price(
 				input_in.order_info = orderin;
 				input_in.operation = odop;
 				input_in.side = bid;
-				stream_in.write(input_in);
+				suborder_book(
+					input_in,
+					req_read,
+					price_stream_out
+				);
+				// stream_in.write(input_in);
 			}
 			if (br) break;
 		}
@@ -424,9 +434,4 @@ void check_update_last_price(
 	price_last_a = price_cur;
 	vol_last_a = vol_cur;
 	
-	suborder_book(
-		stream_in,
-		req_read,
-		price_stream_out
-	);
 }
