@@ -560,7 +560,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_maintain(
 			bookIndex = get_maintain_bookIndex(
 					order_info,
 					bid,
-					direction,		// new change remove
+					direction		// new change remove
 				);
 
 			update_book(
