@@ -1,3 +1,4 @@
+#include "order_book.hpp"
 #include "utils.hpp"
 
 bool is_after(
