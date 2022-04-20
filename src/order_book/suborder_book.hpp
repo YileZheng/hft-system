@@ -1,105 +1,99 @@
-#include "order_book.hpp"
-#include "order_book_core_IndexPop_opt.hpp"
+#include <hls_math.h>
+#include "utils.hpp"
 
- #define __DEBUG__
-// order book for only one instrument
-// searching by calculating address index in the book, price depth
-// and a linked chain in each indexed slot
+void suborder_book(
+	stream<orderMessage> &order_message,
+	ap_uint<1> req_read_in,
+	stream<price_depth> &feed_stream_out
+);
+
+template <int RANGE, int CHAIN_LEVELS>
+class SubOrderBook{
+
+	float UNIT;
+	float SLOTSIZE;
+
+	int INVALID_LINK = (RANGE*2+CHAIN_LEVELS);
+	// book
+	price_depth_chain book[RANGE*2+CHAIN_LEVELS];		// 0 bid 1 ask
+	price_t optimal_prices[2] = {0, 0};
+	addr_index base_bookIndex[2] = {0, 0};
+
+	// hole management
+	stream<link_t> hole_fifo;
+	link_t stack_top = RANGE*2;
+
+	// control signal
+	ap_uint<1> read_en = 0;
+	ap_uint<1> read_DONE = 0;
+	ap_uint<1> update_en = 1;
+
+	// orderbook update
+	addr_index get_bookindex_offset(
+		price_t &price_in,
+		price_t &price_base,
+		ap_uint<1> &bid
+	);
+
+	addr_index get_maintain_bookIndex(
+		order &order_info,
+		ap_uint<1> &bid,
+		orderOp &direction
+	);
+		
+	void update_optimal(
+		unsigned int &bid_ask
+	);
+
+	void update_book(
+		order &order_info,
+		ap_uint<1> &bid,
+		orderOp &direction,		// new change remove
+
+		addr_index &bookIndex_in
+	);
+
+	// fifo operation
+	void store_stack_hole(
+		link_t &hole
+	);
+
+	link_t get_stack_insert_index();
 
 
-addr_index get_bookindex_offset(
-	price_t &price_in,
-	price_t &price_base,
-	ap_uint<1> &bid
-){	
-	// price_t is unsigned, cannot be negetive
-	float price1 = price_in,  price2 = price_base;
-	float price_diff = bid? (price2-price1): (price1-price2);
-	addr_index offset = hls::abs( hls::floor( hls::round( price_diff/(UNIT)) /SLOTSIZE ));
-	// addr_index offset = hls::abs( hls::floor( hls::round(price_diff/(price_t)(UNIT)) /(price_t)SLOTSIZE));
-	return offset;
-}
+	public:
+	// constructor
+	SubOrderBook(int SLOTSIZE_T, float UNIT_T){
+		SLOTSIZE = (float)SLOTSIZE_T;
+		UNIT = UNIT_T;
+	}
 
-bool is_after(
-	price_t &price_in,
-	price_t &price_onchain,
-	ap_uint<1> &bid
-){
-	return bid? price_in<price_onchain: price_in>price_onchain;
-}
-
-void book_read(
-	price_depth_chain book[RANGE*2+CHAIN_LEVELS],
-	addr_index base_bookIndex[2],
-	stream<price_depth> &feed_stream_out,
+	// orderbook read
+	void book_read(
+		stream<price_depth> &feed_stream_out
+	);
 	
-	ap_uint<1> read_en,
-	ap_uint<1> &read_DONE
-){
-	price_depth dummy;
-	dummy.price = 0;
-	dummy.size = 0;
-	price_depth lvl_out;
-	price_depth_chain cur_block;
-	ap_uint<1> req_read = read_en;
-	int ind;
+	// controller
+	void subbook_controller(
+		ap_uint<1> &req_read_in
+	);
 
-	if (read_DONE) read_DONE = 0;
+	// orderbook update
+	void book_maintain(
+		stream<orderMessage> &order_message
+	);
 
-	if(req_read == 1){
-		req_read = 0;
-		READ_BOOK_SIDE:
-		for(int side=0; side<=1; side++){
-			addr_index book_side_offset = (side==1)? RANGE: 0;
-			READ_BOOK_LEVELS:
-			for (int i=0; i<RANGE; i++){
-				ind = (base_bookIndex[side]+i>=RANGE)? base_bookIndex[side]+i-RANGE: base_bookIndex[side]+i;
-				ind += book_side_offset;
-				cur_block = book[ind];
-#ifdef __DEBUG__
-	int show_ind = ind;
-#endif
-				if(cur_block.price != 0){
-					READ_BOOK_LEVEL_LINK:
-					for (int j=0; j<SLOTSIZE; j++){
-						lvl_out.price = cur_block.price;
-						lvl_out.size = cur_block.size;
-						feed_stream_out.write(lvl_out);
-#ifdef __DEBUG__
-	std::cout<<"DEBUG - ";
-	std::cout<<" x: "<<ind<<" y: "<<show_ind << " price: " << cur_block.price;
-	show_ind = cur_block.next;
-	std::cout<<std::endl;
-#endif
-						if (cur_block.next != INVALID_LINK)
-							cur_block = book[cur_block.next];
-						else break;
-					}
-				}
-			}
-			feed_stream_out.write(dummy);
-		}
-		read_DONE = 1;
-	}
-}
+	void suborder_book(
+		stream<orderMessage> &order_message,
+		ap_uint<1> req_read_in,
+		stream<price_depth> &feed_stream_out
+	);
 
-void store_stack_hole(
-	stream<link_t> &hole_fifo,
-	link_t &stack_top,
-	link_t &hole
-){
-#pragma HLS inline
-	if (hole == stack_top-1){
-		stack_top--;
-	}else{
-		hole_fifo.write(hole);
-	}
-}
+};
 
-link_t get_stack_insert_index(
-	stream<link_t> &hole_fifo,
-	link_t &stack_top
-){
+// fifo operations
+template <int RANGE, int CHAIN_LEVELS>
+link_t SubOrderBook<RANGE, CHAIN_LEVELS>::get_stack_insert_index(){
 	link_t addr_out;
 	if (!hole_fifo.empty()){
 		addr_out = hole_fifo.read();
@@ -114,10 +108,36 @@ if (stack_top == INVALID_LINK){
 	return addr_out;
 }
 
-void update_optimal(
-	price_depth_chain book[RANGE*2+CHAIN_LEVELS],
-	price_t optimal_prices[2],
-	addr_index base_bookIndex[2],
+template <int RANGE, int CHAIN_LEVELS>
+void SubOrderBook<RANGE, CHAIN_LEVELS>::store_stack_hole(
+	link_t &hole
+){
+#pragma HLS inline
+	if (hole == stack_top-1){
+		stack_top--;
+	}else{
+		hole_fifo.write(hole);
+	}
+}
+
+// orderbook update
+template <int RANGE, int CHAIN_LEVELS>
+addr_index SubOrderBook<RANGE, CHAIN_LEVELS>::get_bookindex_offset(
+	price_t &price_in,
+	price_t &price_base,
+	ap_uint<1> &bid
+){	
+	// price_t is unsigned, cannot be negetive
+	float price1 = price_in,  price2 = price_base;
+	float price_diff = bid? (price2-price1): (price1-price2);
+	addr_index offset = hls::abs( hls::floor( hls::round( price_diff/(UNIT)) /SLOTSIZE ));
+	// addr_index offset = hls::abs( hls::floor( hls::round(price_diff/(price_t)(UNIT)) /(price_t)SLOTSIZE));
+	return offset;
+}
+
+
+template <int RANGE, int CHAIN_LEVELS>
+void SubOrderBook<RANGE, CHAIN_LEVELS>::update_optimal(
 	unsigned int &bid_ask
 ){
 	price_t cur_price; 
@@ -153,33 +173,11 @@ void update_optimal(
 #endif
 }
 
-void subbook_controller(
-	ap_uint<1> &req_read_in,
-	ap_uint<1> &read_en,
-	ap_uint<1> &read_DONE,
-	ap_uint<1> &update_en
-){
-	// when read signal in, halt the book update and resume book read operation
-	if (read_en){
-		read_en = 0;
-	} else if (req_read_in){
-		read_en = 1;
-		update_en = 0;
-	}
-	if (read_DONE) update_en = 1;
-}
-
-addr_index get_maintain_bookIndex(
+template <int RANGE, int CHAIN_LEVELS>
+addr_index SubOrderBook<RANGE, CHAIN_LEVELS>::get_maintain_bookIndex(
 	order &order_info,
 	ap_uint<1> &bid,
-	orderOp &direction,		// new change remove
-	price_depth_chain book[RANGE*2+CHAIN_LEVELS],		// 0 bid 1 ask
-
-	addr_index base_bookIndex[2],
-	price_t optimal_prices[2],
-
-	stream<link_t> &hole_fifo,
-	link_t &stack_top
+	orderOp &direction
 ){
 
 	unsigned int bid_ask = bid;
@@ -232,7 +230,7 @@ addr_index get_maintain_bookIndex(
 					UPDATE_OPTIMAL_CLEAR_STORE_HOLES:
 					for (int j=0; j<SLOTSIZE; j++){
 						if (cur_block.next != INVALID_LINK)
-							store_stack_hole(hole_fifo, stack_top, cur_block.next);
+							store_stack_hole(cur_block.next);
 						else break;
 						cur_block = book[cur_block.next];
 					}
@@ -248,18 +246,14 @@ addr_index get_maintain_bookIndex(
 	return bookIndex;
 }
 
-void update_book(
+
+template <int RANGE, int CHAIN_LEVELS>
+void SubOrderBook<RANGE, CHAIN_LEVELS>::update_book(
 	order &order_info,
 	ap_uint<1> &bid,
 	orderOp &direction,		// new change remove
-	price_depth_chain book[RANGE*2+CHAIN_LEVELS],		// 0 bid 1 ask
 
-	stream<link_t> &hole_fifo,
-	link_t &stack_top,
-
-	addr_index &bookIndex_in,
-	addr_index base_bookIndex[2],
-	price_t optimal_prices[2]
+	addr_index &bookIndex_in
 ){
 	unsigned int bid_ask = bid;
 	addr_index book_side_offset = bid? RANGE: 0;
@@ -312,7 +306,7 @@ void update_book(
 	std::cout<<"DEBUG - NEW - insert to the chain tail ";
 	std::cout<<std::endl;
 #endif
-								stack_insert_index = get_stack_insert_index(hole_fifo, stack_top);
+								stack_insert_index = get_stack_insert_index();
 								book[last_bookIndex].next = stack_insert_index;
 								chain_new.next = INVALID_LINK;
 								book[stack_insert_index] = chain_new;
@@ -334,7 +328,7 @@ void update_book(
 	std::cout<<std::endl;
 #endif
 									// miss: already iterate to the one should be behind
-									stack_insert_index = get_stack_insert_index(hole_fifo, stack_top);
+									stack_insert_index = get_stack_insert_index();
 									book[last_bookIndex].next = stack_insert_index;
 									chain_new.next = cur_bookIndex;
 									book[stack_insert_index] = chain_new;
@@ -351,7 +345,7 @@ void update_book(
 	std::cout<<"DEBUG - NEW - insert to the front of the chain head ";
 	std::cout<<std::endl;
 #endif
-						stack_insert_index = get_stack_insert_index(hole_fifo, stack_top);
+						stack_insert_index = get_stack_insert_index();
 						book[stack_insert_index] = chain_head;
 						chain_new.next = stack_insert_index;
 						book[bookIndex] = chain_new; 
@@ -420,11 +414,11 @@ void update_book(
 #ifdef __DEBUG__
 		std::cout<<"& search new optimal backward ";
 #endif
-							update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
+							update_optimal(bid_ask);
 						}
 					}
 					else{									// other blocks behind, put the next block in to the book, delete its original block place in stack
-						store_stack_hole(hole_fifo, stack_top, cur_block.next);
+						store_stack_hole(cur_block.next);
 						book[cur_bookIndex] = book[cur_block.next];
 					}
 #ifdef __DEBUG__
@@ -436,7 +430,7 @@ void update_book(
 		std::cout<<"in the middle or tail of the chain ";
 		std::cout<<std::endl;
 #endif
-					store_stack_hole(hole_fifo, stack_top, cur_bookIndex);	// mark down the location of the hole
+					store_stack_hole(cur_bookIndex);	// mark down the location of the hole
 					book[last_bookIndex].next = cur_block.next;
 				}
 			}
@@ -494,11 +488,11 @@ void update_book(
 #ifdef __DEBUG__
 		std::cout<<"& search new optimal backward ";
 #endif
-						update_optimal(book, optimal_prices, base_bookIndex, bid_ask);
+						update_optimal(bid_ask);
 					}
 				}
 				else{									// other blocks behind, put the next block in to the book, delete its original block place in stack
-					store_stack_hole(hole_fifo, stack_top, cur_block.next);
+					store_stack_hole(cur_block.next);
 					book[cur_bookIndex] = book[cur_block.next];
 				}
 #ifdef __DEBUG__
@@ -510,7 +504,7 @@ std::cout<<std::endl;
 		std::cout<<"in the middle or tail of the chain ";
 		std::cout<<std::endl;
 #endif
-				store_stack_hole(hole_fifo, stack_top, cur_bookIndex);	// mark down the location of the hole
+				store_stack_hole(cur_bookIndex);	// mark down the location of the hole
 				book[last_bookIndex].next = cur_block.next;
 			}
 //*/
@@ -542,17 +536,9 @@ std::cout<<std::endl;
 #endif
 }
 
-void book_maintain(
-	stream<orderMessage> &order_message,
-	price_depth_chain book[RANGE*2+CHAIN_LEVELS],		// 0 bid 1 ask
-
-	stream<link_t> &hole_fifo,
-	link_t &stack_top,
-
-	addr_index base_bookIndex[2],
-	price_t optimal_prices[2],
-
-	ap_uint<1> &update_en
+template <int RANGE, int CHAIN_LEVELS>
+void SubOrderBook<RANGE, CHAIN_LEVELS>::book_maintain(
+	stream<orderMessage> &order_message
 ){
 
 	if (update_en){
@@ -572,74 +558,98 @@ void book_maintain(
 					order_info,
 					bid,
 					direction,		// new change remove
-					book,		// 0 bid 1 ask
-
-					base_bookIndex,
-					optimal_prices,
-
-					hole_fifo,
-					stack_top
 				);
 
 			update_book(
 					order_info,
 					bid,
 					direction,		// new change remove
-					book,		// 0 bid 1 ask
 
-					hole_fifo,
-					stack_top,
-
-					bookIndex,
-					base_bookIndex,
-					optimal_prices
+					bookIndex
 				);
 		}
 	}
 }
 
+// controller 
+template <int RANGE, int CHAIN_LEVELS>
+void SubOrderBook<RANGE, CHAIN_LEVELS>::subbook_controller(
+	ap_uint<1> &req_read_in
+	){
+	// when read signal in, halt the book update and resume book read operation
+	if (read_en){
+		read_en = 0;
+	} else if (req_read_in){
+		read_en = 1;
+		update_en = 0;
+	}
+	if (read_DONE) update_en = 1;
+}
 
-void suborder_book(
+
+// orderbook read
+template <int RANGE, int CHAIN_LEVELS>
+void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
+	stream<price_depth> &feed_stream_out
+){
+	price_depth dummy;
+	dummy.price = 0;
+	dummy.size = 0;
+	price_depth lvl_out;
+	price_depth_chain cur_block;
+	ap_uint<1> req_read = read_en;
+	int ind;
+
+	if (read_DONE) read_DONE = 0;
+
+	if(req_read == 1){
+		req_read = 0;
+		READ_BOOK_SIDE:
+		for(int side=0; side<=1; side++){
+			addr_index book_side_offset = (side==1)? RANGE: 0;
+			READ_BOOK_LEVELS:
+			for (int i=0; i<RANGE; i++){
+				ind = (base_bookIndex[side]+i>=RANGE)? base_bookIndex[side]+i-RANGE: base_bookIndex[side]+i;
+				ind += book_side_offset;
+				cur_block = book[ind];
+#ifdef __DEBUG__
+	int show_ind = ind;
+#endif
+				if(cur_block.price != 0){
+					READ_BOOK_LEVEL_LINK:
+					for (int j=0; j<SLOTSIZE; j++){
+						lvl_out.price = cur_block.price;
+						lvl_out.size = cur_block.size;
+						feed_stream_out.write(lvl_out);
+#ifdef __DEBUG__
+	std::cout<<"DEBUG - ";
+	std::cout<<" x: "<<ind<<" y: "<<show_ind << " price: " << cur_block.price;
+	show_ind = cur_block.next;
+	std::cout<<std::endl;
+#endif
+						if (cur_block.next != INVALID_LINK)
+							cur_block = book[cur_block.next];
+						else break;
+					}
+				}
+			}
+			feed_stream_out.write(dummy);
+		}
+		read_DONE = 1;
+	}
+}
+
+// main management
+template <int RANGE, int CHAIN_LEVELS>
+void SubOrderBook<RANGE, CHAIN_LEVELS>::suborder_book(
 	stream<orderMessage> &order_message,
 	ap_uint<1> req_read_in,
 	stream<price_depth> &feed_stream_out
 ){
 
-	// book
-	static price_depth_chain book[RANGE*2+CHAIN_LEVELS];		// 0 bid 1 ask
-	static price_t optimal_prices[2] = {0, 0};
-	static addr_index base_bookIndex[2] = {0, 0};
-
-	// hole management
-	static stream<link_t> hole_fifo;
-	static link_t stack_top = RANGE*2;
-
-	// control signal
-	static ap_uint<1> read_en = 0;
-	static ap_uint<1> read_DONE = 0;
-	static ap_uint<1> update_en = 1;
-
-	subbook_controller(
-		req_read_in,
-		read_en,
-		read_DONE,
-		update_en
-	);
-
+	subbook_controller(req_read_in);
 	// read process
-	book_read(book, base_bookIndex, feed_stream_out, read_en, read_DONE); 
-	
-	book_maintain(
-		order_message,
-		book,		// 0 bid 1 ask
-
-		hole_fifo,
-		stack_top,
-
-		base_bookIndex,
-		optimal_prices,
-
-		update_en
-	);
+	book_read(feed_stream_out); 
+	book_maintain(order_message);
 
 }

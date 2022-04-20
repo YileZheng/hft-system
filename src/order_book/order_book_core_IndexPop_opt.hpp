@@ -41,17 +41,6 @@ link_t get_stack_insert_index(
 	link_t &stack_top
 );
 
-addr_index cal_index(
-	int i,
-	addr_index baseIndex,
-	addr_index book_side_offset
-);
-
-bool indexprice_valid(
-	price_depth_chain book[RANGE*2+CHAIN_LEVELS],
-	addr_index bookIndex_tmp
-);
-
 void update_optimal(
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],
 	price_t optimal_prices[2],
