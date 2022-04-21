@@ -2,6 +2,8 @@
 #include "order_book.hpp"
 #include "utils.hpp"
 
+#define __DEBUG__
+
 void suborder_book(
 	orderMessage order_message,
 	ap_uint<1> req_read_in,

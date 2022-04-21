@@ -1,7 +1,7 @@
 #include "order_book.hpp"
 #include "order_book_core_IndexPop_opt.hpp"
 
- #define __DEBUG__
+// #define __DEBUG__
 // order book for only one instrument
 // searching by calculating address index in the book, price depth
 // and a linked chain in each indexed slot
@@ -62,6 +62,7 @@ void book_read(
 				if(cur_block.price != 0){
 					READ_BOOK_LEVEL_LINK:
 					for (int j=0; j<SLOTSIZE; j++){
+#pragma HLS PIPELINE
 						lvl_out.price = cur_block.price;
 						lvl_out.size = cur_block.size;
 						feed_stream_out.write(lvl_out);
@@ -231,6 +232,7 @@ addr_index get_maintain_bookIndex(
 					// record holes obtained from clearing this chain
 					UPDATE_OPTIMAL_CLEAR_STORE_HOLES:
 					for (int j=0; j<SLOTSIZE; j++){
+#pragma HLS PIPELINE
 						if (cur_block.next != INVALID_LINK)
 							store_stack_hole(hole_fifo, stack_top, cur_block.next);
 						else break;
