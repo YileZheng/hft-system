@@ -5,6 +5,9 @@
 //#define __DEBUG__
 #define RANGE 1000
 #define CHAIN_LEVELS 200
+// #define UNIT 0.01
+// #define SLOTSIZE 10
+
 
 
 void dut_suborder_book(
@@ -17,7 +20,7 @@ void dut_suborder_book(
 class SubOrderBook{
 
 	float UNIT;
-	float SLOTSIZE;
+	int SLOTSIZE;
 
 	int INVALID_LINK = (RANGE*2+CHAIN_LEVELS);
 	// book
@@ -71,7 +74,7 @@ class SubOrderBook{
 	public:
 	// constructor
 	SubOrderBook(int SLOTSIZE_T, float UNIT_T){
-		SLOTSIZE = (float)SLOTSIZE_T;
+		SLOTSIZE = SLOTSIZE_T;
 		UNIT = UNIT_T;
 	}
 
