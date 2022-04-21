@@ -2,12 +2,12 @@
 #include "order_book.hpp"
 #include "utils.hpp"
 
-#define __DEBUG__
+//#define __DEBUG__
 
-void suborder_book(
+void dut_suborder_book(
 	orderMessage order_message,
 	ap_uint<1> req_read_in,
-	stream<price_depth> &feed_stream_out
+	hls::stream<price_depth> &feed_stream_out
 );
 
 template <int RANGE, int CHAIN_LEVELS>
@@ -23,8 +23,8 @@ class SubOrderBook{
 	addr_index base_bookIndex[2] = {0, 0};
 
 	// hole management
-	stream<link_t, CHAIN_LEVELS> hole_fifo;
-	stream<orderMessage, 20> order_message_fifo;		//TODO
+	hls::stream<link_t, CHAIN_LEVELS> hole_fifo;//("hole fifo");
+	hls::stream<orderMessage, 20> order_message_fifo;//("order fifo");		//TODO
 	link_t stack_top = RANGE*2;
 
 	// control signal
@@ -74,7 +74,7 @@ class SubOrderBook{
 
 	// orderbook read
 	void book_read(
-		stream<price_depth> &feed_stream_out
+		hls::stream<price_depth> &feed_stream_out
 	);
 	
 	// controller
@@ -90,7 +90,7 @@ class SubOrderBook{
 	void suborder_book(
 		orderMessage order_message,
 		ap_uint<1> req_read_in,
-		stream<price_depth> &feed_stream_out
+		hls::stream<price_depth> &feed_stream_out
 	);
 
 };
@@ -233,6 +233,7 @@ addr_index SubOrderBook<RANGE, CHAIN_LEVELS>::get_maintain_bookIndex(
 					// record holes obtained from clearing this chain
 					UPDATE_OPTIMAL_CLEAR_STORE_HOLES:
 					for (int j=0; j<SLOTSIZE; j++){
+#pragma HLS PIPELINE
 						if (cur_block.next != INVALID_LINK)
 							store_stack_hole(cur_block.next);
 						else break;
@@ -595,7 +596,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::subbook_controller(
 // orderbook read
 template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
-	stream<price_depth> &feed_stream_out
+	hls::stream<price_depth> &feed_stream_out
 ){
 	price_depth dummy;
 	dummy.price = 0;
@@ -623,6 +624,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 				if(cur_block.price != 0){
 					READ_BOOK_LEVEL_LINK:
 					for (int j=0; j<SLOTSIZE; j++){
+#pragma HLS PIPELINE
 						lvl_out.price = cur_block.price;
 						lvl_out.size = cur_block.size;
 						feed_stream_out.write(lvl_out);
@@ -649,7 +651,7 @@ template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::suborder_book(
 	orderMessage order_message,
 	ap_uint<1> req_read_in,
-	stream<price_depth> &feed_stream_out
+	hls::stream<price_depth> &feed_stream_out
 ){
 
 	subbook_controller(req_read_in);

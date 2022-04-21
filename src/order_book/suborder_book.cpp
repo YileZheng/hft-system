@@ -5,7 +5,7 @@
 #define SLOTSIZE 10
 
 
-void suborder_book(
+void dut_suborder_book(
 	orderMessage order_message,
 	ap_uint<1> req_read_in,
 	stream<price_depth> &feed_stream_out
