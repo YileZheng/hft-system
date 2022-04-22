@@ -42,3 +42,10 @@
 # Environment Configuration
 .vscode/c_cpp_properties.json
 .vscode
+
+# large files
+*.zip
+*.csv
+
+# debug
+*demo*
