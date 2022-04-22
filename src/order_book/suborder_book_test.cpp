@@ -1,3 +1,6 @@
+#define __gmp_const const
+#include <gmp.h>
+#include <mpfr.h>
 #include<iostream>
 #include<fstream>
 #include<sstream>
@@ -24,8 +27,8 @@ void check_update_last_price(vector<string> orderBook_split, int price_lasta_ini
 int main()
 {
 	int level=LV;
-	string message_path("/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_message_10.csv");
-	string orderbook_path("/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv"); 
+	string message_path("/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_message_10_sub.csv");
+	string orderbook_path("/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_orderbook_10_sub.csv"); 
 	string result_path("result.csv");
 	string answer_path("answer.csv");
 

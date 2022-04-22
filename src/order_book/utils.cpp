@@ -1,3 +1,6 @@
+#define __gmp_const const
+#include <gmp.h>
+#include <mpfr.h>
 #include "order_book.hpp"
 #include "utils.hpp"
 
