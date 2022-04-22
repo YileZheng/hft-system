@@ -14,8 +14,9 @@ void dut_suborder_book(
 template <int RANGE, int CHAIN_LEVELS>
 class SubOrderBook{
 
-	float UNIT;
 	int SLOTSIZE;
+	price_t UNIT;
+	price_t UNIT_SLOT;
 
 	int INVALID_LINK = (RANGE*2+CHAIN_LEVELS);
 	// book
@@ -70,7 +71,8 @@ class SubOrderBook{
 	// constructor
 	SubOrderBook(int SLOTSIZE_T, float UNIT_T){
 		SLOTSIZE = SLOTSIZE_T;
-		UNIT = UNIT_T;
+		UNIT = (price_t)UNIT_T;
+		UNIT_SLOT = SLOTSIZE*UNIT;
 	}
 
 	// orderbook read
@@ -132,9 +134,11 @@ addr_index SubOrderBook<RANGE, CHAIN_LEVELS>::get_bookindex_offset(
 	price_t &price_base,
 	ap_uint<1> &bid
 ){	
-	// price_t is unsigned, cannot be negetive
-	float price1 = price_in,  price2 = price_base;
-	float price_diff = bid? (price2-price1): (price1-price2);
+	// price_t is unsigned, cannot be negetive, but price difference can be negetive
+	price_delta_t price1 = price_in,  price2 = price_base;
+	price_delta_t price_diff = bid? (price2-price1): (price1-price2);
+	// float price1 = price_in,  price2 = price_base;
+	// float price_diff = bid? (price2-price1): (price1-price2);
 	addr_index offset = hls::abs( hls::floor( hls::round( price_diff/(UNIT)) /SLOTSIZE ));
 	// addr_index offset = hls::abs( hls::floor( hls::round(price_diff/(price_t)(UNIT)) /(price_t)SLOTSIZE));
 	return offset;
@@ -162,8 +166,10 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::update_optimal(
 	for (i=2; i<=RANGE; i++){		// search backward in the book starting with orginal base_bookIndex
 		if (cur_price != 0){		// find valid slot
 			base_bookIndex[bid_ask] = bookIndex_tmp;
-			optimal_prices[bid_ask] = (bid_ask)? (price_t)(optimal_prices[bid_ask]-(price_t)(UNIT*SLOTSIZE*(i-1))):
-												(price_t)(optimal_prices[bid_ask]+(price_t)(UNIT*SLOTSIZE*(i-1)));
+			// optimal_prices[bid_ask] = (bid_ask)? (price_t)(optimal_prices[bid_ask]-(price_t)(UNIT*SLOTSIZE*(i-1))):
+			// 									(price_t)(optimal_prices[bid_ask]+(price_t)(UNIT*SLOTSIZE*(i-1)));
+			optimal_prices[bid_ask] = (bid_ask)? (price_t)(optimal_prices[bid_ask]-(price_t)(UNIT_SLOT*(i-1))):
+												(price_t)(optimal_prices[bid_ask]+(price_t)(UNIT_SLOT*(i-1)));
 			break;
 		}
 		bookIndex_tmp = base_bookIndex[bid_ask]+i;
@@ -209,7 +215,8 @@ addr_index SubOrderBook<RANGE, CHAIN_LEVELS>::get_maintain_bookIndex(
 			std::cout<<" origin optimal "<<optimal_prices[bid_ask];
 			std::cout<<std::endl;
 	#endif
-			optimal_prices[bid_ask] = (bid)? (price_t)(optimal_prices[bid_ask]+(price_t)(optimal_offset*UNIT*SLOTSIZE)): (price_t)(optimal_prices[bid_ask]-(price_t)(optimal_offset*UNIT*SLOTSIZE));
+			// optimal_prices[bid_ask] = (bid)? (price_t)(optimal_prices[bid_ask]+(price_t)(optimal_offset*UNIT*SLOTSIZE)): (price_t)(optimal_prices[bid_ask]-(price_t)(optimal_offset*UNIT*SLOTSIZE));
+			optimal_prices[bid_ask] = (bid)? (price_t)(optimal_prices[bid_ask]+(price_t)(optimal_offset*UNIT_SLOT)): (price_t)(optimal_prices[bid_ask]-(price_t)(optimal_offset*UNIT_SLOT));
 	#ifdef __DEBUG__
 			std::cout<<"DEBUG - {better optimal price} ";
 			std::cout<<" origin base: "<<base_bookIndex[bid_ask];
