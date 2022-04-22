@@ -562,6 +562,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_maintain(
 		ap_uint<1> bid;
 		orderOp direction;		// new change remove
 		orderMessage order_msg;
+		ORDER_FIFO:
 		while (! order_message_fifo.empty()){
 			order_msg = order_message_fifo.read();
 			order_info = order_msg.order_info;
