@@ -18,11 +18,13 @@ using namespace std;
 #define LV 10
 #define UNIT 0.01
 #define SLOTSIZE 10
+#define READ_MAX 10
 
 
 vector<string> split_string(std::string s,std::string delimiter);
 string concat_string(vector<vector<price_depth>> pd, std::string delimiter, int level);
 void check_update_last_price(vector<string> orderBook_split, int price_lasta_init, int price_lastb_init, int vol_lasta_init, int vol_lastb_init);
+int read_max = READ_MAX;
 
 int main()
 {
@@ -87,6 +89,7 @@ int main()
 			// stream_in.write(input_in);
 			dut_suborder_book(
 				input_in,
+				read_max,
 				req_read,
 				price_stream_out
 			);
@@ -145,6 +148,7 @@ int main()
 		// stream_in.write(input_in);
 		dut_suborder_book(
 			input_in,
+			read_max,
 			req_read,
 			price_stream_out
 		);
@@ -350,6 +354,7 @@ void check_update_last_price(
 				input_in.side = bid;
 				dut_suborder_book(
 					input_in,
+					read_max,
 					req_read,
 					price_stream_out
 				);
@@ -418,6 +423,7 @@ void check_update_last_price(
 				input_in.side = bid;
 				dut_suborder_book(
 					input_in,
+					read_max,
 					req_read,
 					price_stream_out
 				);
