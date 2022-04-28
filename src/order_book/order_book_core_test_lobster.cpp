@@ -6,6 +6,7 @@
 #include<ctime>
 #include<numeric>
 #include<map>
+#include <hls_stream.h>
 
 #include "order_book.hpp"
 // #include "order_book_core.hpp"
@@ -42,8 +43,8 @@ int main()
 	order orderin;
 	orderOp odop;
 	ap_uint<1> bid, req_read;
-	stream<price_depth> price_stream_out;
-	stream<orderMessage> stream_in;
+	hls::stream<price_depth> price_stream_out;
+	hls::stream<orderMessage> stream_in;
 	price_depth price_read;
 	orderMessage input_in;
 
@@ -285,8 +286,8 @@ void check_update_last_price(
 	static vector<pair<int, int>> cache_lasta, cache_lastb;
 	static int price_last_b=price_lastb_init, price_last_a=price_lasta_init;
 	static int vol_last_b=vol_lastb_init, vol_last_a=vol_lasta_init;
-	static stream<price_depth> price_stream_out;
-	static stream<orderMessage> stream_in;
+	static hls::stream<price_depth> price_stream_out;
+	static hls::stream<orderMessage> stream_in;
 	const int cache_max_len = 10;
 
 	order orderin;

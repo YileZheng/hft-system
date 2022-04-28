@@ -24,20 +24,20 @@ bool is_after(
 void book_read(
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],
 	addr_index base_bookIndex[2],
-	stream<price_depth> &feed_stream_out,
+	hls::stream<price_depth> &feed_stream_out,
 	
 	ap_uint<1> read_en,
 	ap_uint<1> &read_DONE
 );
 
 void store_stack_hole(
-	stream<link_t> &hole_fifo,
+	hls::stream<link_t> &hole_fifo,
 	link_t &stack_top,
 	link_t &hole
 );
 
 link_t get_stack_insert_index(
-	stream<link_t> &hole_fifo,
+	hls::stream<link_t> &hole_fifo,
 	link_t &stack_top
 );
 
@@ -57,7 +57,7 @@ addr_index get_maintain_bookIndex(
 	addr_index base_bookIndex[2],
 	price_t optimal_prices[2],
 
-	stream<link_t> &hole_fifo,
+	hls::stream<link_t> &hole_fifo,
 	link_t &stack_top
 );
 
@@ -67,7 +67,7 @@ void update_book(
 	orderOp &direction,		// new change remove
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],		// 0 bid 1 ask
 
-	stream<link_t> &hole_fifo,
+	hls::stream<link_t> &hole_fifo,
 	link_t &stack_top,
 
 	addr_index &bookIndex_in,
@@ -83,10 +83,10 @@ void subbook_controller(
 );
 
 void book_maintain(
-	stream<orderMessage> &order_message,
+	hls::stream<orderMessage> &order_message,
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],		// 0 bid 1 ask
 
-	stream<link_t> &hole_fifo,
+	hls::stream<link_t> &hole_fifo,
 	link_t &stack_top,
 
 	addr_index base_bookIndex[2],
@@ -96,7 +96,7 @@ void book_maintain(
 );
 
 void suborder_book(
-	stream<orderMessage> &order_message,
+	hls::stream<orderMessage> &order_message,
 	ap_uint<1> req_read_in,
-	stream<price_depth> &feed_stream_out
+	hls::stream<price_depth> &feed_stream_out
 );

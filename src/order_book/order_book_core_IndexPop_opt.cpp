@@ -1,3 +1,4 @@
+#include <hls_stream.h>
 #include "order_book.hpp"
 #include "order_book_core_IndexPop_opt.hpp"
 
@@ -31,7 +32,7 @@ bool is_after(
 void book_read(
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],
 	addr_index base_bookIndex[2],
-	stream<price_depth> &feed_stream_out,
+	hls::stream<price_depth> &feed_stream_out,
 	
 	ap_uint<1> read_en,
 	ap_uint<1> &read_DONE
@@ -85,7 +86,7 @@ void book_read(
 }
 
 void store_stack_hole(
-	stream<link_t> &hole_fifo,
+	hls::stream<link_t> &hole_fifo,
 	link_t &stack_top,
 	link_t &hole
 ){
@@ -98,7 +99,7 @@ void store_stack_hole(
 }
 
 link_t get_stack_insert_index(
-	stream<link_t> &hole_fifo,
+	hls::stream<link_t> &hole_fifo,
 	link_t &stack_top
 ){
 	link_t addr_out;
@@ -179,7 +180,7 @@ addr_index get_maintain_bookIndex(
 	addr_index base_bookIndex[2],
 	price_t optimal_prices[2],
 
-	stream<link_t> &hole_fifo,
+	hls::stream<link_t> &hole_fifo,
 	link_t &stack_top
 ){
 
@@ -256,7 +257,7 @@ void update_book(
 	orderOp &direction,		// new change remove
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],		// 0 bid 1 ask
 
-	stream<link_t> &hole_fifo,
+	hls::stream<link_t> &hole_fifo,
 	link_t &stack_top,
 
 	addr_index &bookIndex_in,
@@ -545,10 +546,10 @@ std::cout<<std::endl;
 }
 
 void book_maintain(
-	stream<orderMessage> &order_message,
+	hls::stream<orderMessage> &order_message,
 	price_depth_chain book[RANGE*2+CHAIN_LEVELS],		// 0 bid 1 ask
 
-	stream<link_t> &hole_fifo,
+	hls::stream<link_t> &hole_fifo,
 	link_t &stack_top,
 
 	addr_index base_bookIndex[2],
@@ -602,9 +603,9 @@ void book_maintain(
 
 
 void suborder_book(
-	stream<orderMessage> &order_message,
+	hls::stream<orderMessage> &order_message,
 	ap_uint<1> req_read_in,
-	stream<price_depth> &feed_stream_out
+	hls::stream<price_depth> &feed_stream_out
 ){
 
 	// book
@@ -613,7 +614,7 @@ void suborder_book(
 	static addr_index base_bookIndex[2] = {0, 0};
 
 	// hole management
-	static stream<link_t> hole_fifo;
+	static hls::stream<link_t> hole_fifo;
 	static link_t stack_top = RANGE*2;
 
 	// control signal
