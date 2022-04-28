@@ -6,9 +6,7 @@
 #include<ctime>
 #include<numeric>
 #include<map>
-#include <hls_stream.h>
 
-#include "order_book.hpp"
 // #include "order_book_core.hpp"
 // #include "order_book_core_IndexPop.hpp"
 #include "order_book_core_IndexPop_opt.hpp"

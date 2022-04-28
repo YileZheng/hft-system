@@ -1,3 +1,5 @@
+#include "common.hpp"
+#include <hls_stream.h>
 #include <hls_math.h>
 
 #define RANGE 1000 		// RANGE level of price to track in order book 
