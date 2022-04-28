@@ -12,12 +12,13 @@
 
 void dut_suborder_book(
 	orderMessage order_message,
+	ap_uint<8> read_max,
 	ap_uint<1> req_read_in,
-	stream<price_depth> &feed_stream_out
+	hls::stream<price_depth> &feed_stream_out
 ){
 	
 	static SubOrderBook<RANGE, CHAIN_LEVELS> dut(AS_SLOTSIZE, AS_UNIT);
-	dut.suborder_book(order_message, req_read_in, feed_stream_out);
+	dut.suborder_book(order_message, read_max, req_read_in, feed_stream_out);
 }
 
 

@@ -7,6 +7,7 @@
 
 void dut_suborder_book(
 	orderMessage order_message,
+	ap_uint<8> read_max,
 	ap_uint<1> req_read_in,
 	hls::stream<price_depth> &feed_stream_out
 );
@@ -17,6 +18,7 @@ class SubOrderBook{
 	int SLOTSIZE;
 	price_t UNIT;
 	price_t UNIT_SLOT;
+	int READ_CNT = 10;
 
 	int INVALID_LINK = (RANGE*2+CHAIN_LEVELS);
 	// book
@@ -69,14 +71,34 @@ class SubOrderBook{
 
 	public:
 	// constructor
+	SubOrderBook(){
+		SLOTSIZE = AS_SLOTSIZE;
+		UNIT = (price_t)AS_UNIT_T;
+		UNIT_SLOT = SLOTSIZE*UNIT;
+	}
+
 	SubOrderBook(int SLOTSIZE_T, float UNIT_T){
 		SLOTSIZE = SLOTSIZE_T;
 		UNIT = (price_t)UNIT_T;
 		UNIT_SLOT = SLOTSIZE*UNIT;
 	}
 
+	void config(int SLOTSIZE_T, float UNIT_T){
+		SLOTSIZE = SLOTSIZE_T;
+		UNIT = (price_t)UNIT_T;
+		UNIT_SLOT = SLOTSIZE*UNIT;
+	}
+
+
 	// orderbook read
 	void book_read(
+		ap_uint<8> read_max,
+		hls::stream<price_depth> &feed_stream_out
+	);
+
+	void book_read_wrap(
+		ap_uint<8> read_max,
+		ap_uint<1> req_read_in,
 		hls::stream<price_depth> &feed_stream_out
 	);
 	
@@ -92,6 +114,7 @@ class SubOrderBook{
 
 	void suborder_book(
 		orderMessage order_message,
+		ap_uint<8> read_max,
 		ap_uint<1> req_read_in,
 		hls::stream<price_depth> &feed_stream_out
 	);
@@ -605,6 +628,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::subbook_controller(
 // orderbook read
 template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
+	ap_uint<8> read_max,
 	hls::stream<price_depth> &feed_stream_out
 ){
 	price_depth dummy;
@@ -613,7 +637,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 	price_depth lvl_out;
 	price_depth_chain cur_block;
 	ap_uint<1> req_read = read_en;
-	int ind;
+	int ind, read_cnt;
 
 	if (read_DONE) read_DONE = 0;
 
@@ -621,9 +645,11 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 		req_read = 0;
 		READ_BOOK_SIDE:
 		for(int side=0; side<=1; side++){
+			read_cnt = read_max;
 			addr_index book_side_offset = (side==1)? RANGE: 0;
 			READ_BOOK_LEVELS:
 			for (int i=0; i<RANGE; i++){
+				if (read_cnt == 0) break;
 				ind = (base_bookIndex[side]+i>=RANGE)? base_bookIndex[side]+i-RANGE: base_bookIndex[side]+i;
 				ind += book_side_offset;
 				cur_block = book[ind];
@@ -637,13 +663,14 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 						lvl_out.price = cur_block.price;
 						lvl_out.size = cur_block.size;
 						feed_stream_out.write(lvl_out);
+						read_cnt--;
 #ifdef __DEBUG__
 	std::cout<<"DEBUG - ";
 	std::cout<<" x: "<<ind<<" y: "<<show_ind << " price: " << cur_block.price;
 	show_ind = cur_block.next;
 	std::cout<<std::endl;
 #endif
-						if (cur_block.next != INVALID_LINK)
+						if ((cur_block.next != INVALID_LINK) || (read_cnt != 0))
 							cur_block = book[cur_block.next];
 						else break;
 					}
@@ -655,17 +682,31 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 	}
 }
 
+template <int RANGE, int CHAIN_LEVELS>
+void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read_wrap(
+		ap_uint<8> read_max,
+		ap_uint<1> req_read_in,
+		hls::stream<price_depth> &feed_stream_out
+){
+
+	subbook_controller(req_read_in);
+	// read process
+	book_read(read_max, feed_stream_out); 
+	
+}
+
 // main management
 template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::suborder_book(
 	orderMessage order_message,
+	ap_uint<8> read_max,
 	ap_uint<1> req_read_in,
 	hls::stream<price_depth> &feed_stream_out
 ){
 
 	subbook_controller(req_read_in);
 	// read process
-	book_read(feed_stream_out); 
+	book_read(read_max, feed_stream_out); 
 	book_maintain(order_message);
 
 }
