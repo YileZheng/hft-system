@@ -72,8 +72,8 @@ class SubOrderBook{
 	public:
 	// constructor
 	SubOrderBook(){
-		SLOTSIZE = AS_SLOTSIZE;
-		UNIT = (price_t)AS_UNIT_T;
+		SLOTSIZE = 10;
+		UNIT = (price_t)0.01;
 		UNIT_SLOT = SLOTSIZE*UNIT;
 	}
 
@@ -156,7 +156,8 @@ addr_index SubOrderBook<RANGE, CHAIN_LEVELS>::get_bookindex_offset(
 	price_t &price_in,
 	price_t &price_base,
 	ap_uint<1> &bid
-){	
+){
+#pragma HLS PIPELINE
 	// price_t is unsigned, cannot be negetive, but price difference can be negetive
 	price_delta_t price1 = price_in,  price2 = price_base;
 	price_delta_t price_diff = bid? (price2-price1): (price1-price2);
@@ -670,7 +671,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 	show_ind = cur_block.next;
 	std::cout<<std::endl;
 #endif
-						if ((cur_block.next != INVALID_LINK) || (read_cnt != 0))
+						if ((cur_block.next != INVALID_LINK) && (read_cnt != 0))
 							cur_block = book[cur_block.next];
 						else break;
 					}
