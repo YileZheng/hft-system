@@ -10,7 +10,7 @@
 typedef ap_uint<48> Time;	/*Time stamp for round-trip latency measurements*/
 
 typedef signed int addr_index;
-typedef ap_uint<64> symbol_t; 
+typedef ap_uint<64> symbol_t;       // 8 characters rignt padded with spaces
 typedef ap_ufixed<52, 32> price_t; 
 typedef ap_fixed<53,32> price_delta_t;
 typedef ap_int<32> qty_t;        /*Order size in hundreds*/
