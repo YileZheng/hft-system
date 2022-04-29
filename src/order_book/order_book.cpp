@@ -1,6 +1,9 @@
 #include "order_book.hpp"
 #include "suborder_book.hpp"
 
+
+#define __DEBUG__
+
 void order_book_system(
 	// data
 	hls::stream<Message> &stream_in,
@@ -25,7 +28,7 @@ void order_book_system(
 	
 	static SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]={{AS_SLOTSIZE, AS_UNIT}};  // TODO
 	static symbol_t symbol_map[STOCKS];
-	static ap_uint<STOCKS> read_req_concat;
+	static ap_uint<STOCKS> read_req_concat=0;
 	static ap_uint<8> read_max=10;
 	
 	// control signal
@@ -81,6 +84,11 @@ void order_book_system(
 			ordermessage_in.operation = message_in.operation;
 			ordermessage_in.side = message_in.side;
 			index_msg = symbol_mapping(symbol_map, message_in.symbol);
+#ifdef __DEBUG__
+			if (!(index_msg>=0)&&(index_msg<STOCKS)){
+				printf("Input symbol not found in the local symbol map, discard!!!!!!!!");
+			}
+#endif
 			update_subbooks(index_msg, books, ordermessage_in);
 		}
 	}
@@ -160,15 +168,10 @@ int symbol_mapping(
 	symbol_t symbol
 ){
 #pragma HLS INLINE off
-	// ap_uint<STOCKS> onehot=0;
-	int index;
+	int index=-1;
 	for (int i=0; i<STOCKS; i++){
 #pragma HLS UNROLL
 		if (symbol_map[i]==symbol){
-			// onehot |= 1<<i;
-			index = i;
-		}else{
-			// onehot |= 0<<i;
 			index = i;
 		}
 	}

@@ -79,19 +79,21 @@ class last_manager{
 int main()
 {
 	int level=LV;
-	string message_path[STOCK_TEST] = {{"/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_message_10_sub.csv"},
-								{"/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_message_10_sub.csv"},
-								{"/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_message_10_sub.csv"}};
-	string orderbook_path[STOCK_TEST] = {{"/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_orderbook_10_sub.csv"},
-								{"/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_orderbook_10_sub.csv"},
-								{"/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_orderbook_10_sub.csv"}};
+	string message_path[STOCK_TEST] =  {{"/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_message_10.csv"},
+										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/AMZN_2012-06-21_34200000_57600000_message_10.csv"},
+										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/GOOG_2012-06-21_34200000_57600000_message_10.csv"}};
+	string orderbook_path[STOCK_TEST] ={{"/home/yzhengbv/00-data/git/hft-system/data/lobster/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv"},
+										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/AMZN_2012-06-21_34200000_57600000_orderbook_10.csv"},
+										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/GOOG_2012-06-21_34200000_57600000_orderbook_10.csv"}};
 					
 	string result_path("result.csv");
 	string answer_path("answer.csv");
 
 	string pr, qty, oid, tstmp, ab, op;
-	vector<ifstream> message_ls(STOCK_TEST),  orderbook_ls(STOCK_TEST);
-	vector<last_manager> last_ls(STOCK_TEST);
+	ifstream message_ls[STOCK_TEST],  orderbook_ls[STOCK_TEST];
+	// vector<ifstream *> message_ls(STOCK_TEST),  orderbook_ls(STOCK_TEST);
+	// vector<last_manager *> last_ls(STOCK_TEST);
+	last_manager* last_ls[STOCK_TEST];
 	vector<string> last_orderbook_line_ls(STOCK_TEST);
 	ifstream new_file;
 	ofstream result, answer;
@@ -103,7 +105,7 @@ int main()
 
 
 	// order stream
-	int id=0;
+	int id=-1;
 	orderOp odop;
 	ap_uint<1> bid, req_read;
 	hls::stream<price_depth> price_stream_out;
@@ -125,26 +127,37 @@ int main()
 		'A'  // void, run, halt, read book, clear, config symbol map | read_max 
 	);
 
+	// boot the kernel
+	order_book_system(
+		// data
+		stream_in,
+		price_stream_out,
+		// configuration inputs
+		symbol_map,
+		(symbol_t)0,
+		read_max,
+		// control input
+		'R'  // void, run, halt, read book, clear, config symbol map | read_max 
+	);
 
 	// open files
-	for (auto fil: message_path){
-		ifstream message;
-		message.open(fil, ios::in);
-		if((!message)){
-			std::cout<<"Sorry the file you are looking for is not available: "<<fil<<endl;
+	for (int i=0; i<STOCK_TEST; i++){
+		// ifstream message, orderbook;
+		// message.open(message_path[i], ios::in);
+		// orderbook.open(orderbook_path[i], ios::in);
+		message_ls[i].open(message_path[i], ios::in);
+		orderbook_ls[i].open(orderbook_path[i], ios::in);
+		if((!message_ls[i])){
+			std::cout<<"Sorry the file you are looking for is not available: "<<message_path[i]<<endl;
 			return -1;
 		}
-		message_ls.push_back(message);
-	}
+		// message_ls.push_back(&message);
 
-	for (auto fil: orderbook_path){
-		ifstream orderbook;
-		orderbook.open(fil, ios::in);
-		if((!orderbook)){
-			std::cout<<"Sorry the file you are looking for is not available: "<<fil<<endl;
+		if((!orderbook_ls[i])){
+			std::cout<<"Sorry the file you are looking for is not available: "<<orderbook_path[i]<<endl;
 			return -1;
 		}
-		orderbook_ls.push_back(orderbook);
+		// orderbook_ls.push_back(&orderbook);
 	}
 
 	result.open(result_path, ios::out | ios::trunc);
@@ -191,14 +204,15 @@ int main()
 			priceb_init = stoi(*(line_split.end()-2));
 			vola_init = stoi(*(line_split.end()-3));
 			volb_init = stoi(*(line_split.end()-1));
-			last_manager last(pricea_init, priceb_init, vola_init, volb_init,symbol_map[ii]);
-			last_ls.push_back(last);
+			last_manager* last = new last_manager(pricea_init, priceb_init, vola_init, volb_init,symbol_map[ii]);
+			// last_ls.push_back(&last);
+			last_ls[ii] = last;
 			last_orderbook_line_ls.push_back(orderbook_line);
 		}
 	}
 
 	ap_uint<STOCK_TEST> neof = 0-1;
-	while (!neof){	
+	while (neof){
 		for (int ii=0; ii<STOCK_TEST; ii++){
 			if (!message_ls[ii].eof()){
 				orderbook_ls[ii] >> orderbook_line;
@@ -212,7 +226,8 @@ int main()
 				pr = line_split[4];
 				ab = line_split[5];
 
-				last_ls[ii].check_update_last_price(split_string(orderbook_line, string(",")),(Time)(stof(tstmp)*1000000000));
+				id++; 
+				last_ls[ii]->check_update_last_price(split_string(orderbook_line, string(",")),(Time)(stof(tstmp)*1000000000));
 				
 				if ((op[0] == '5') || (op[0] == '7'))
 					continue;
@@ -260,12 +275,11 @@ int main()
 				end = clock();
 				elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000000;
 
-				id++; 
 
 				vector<vector<price_depth>> resultbook;
 				vector<price_depth> cur_v;
 				while (!price_stream_out.empty()){
-					std::cout << "Symbol: " << symbol_map[ii] << std::endl;
+//					std::cout << "Symbol: " << symbol_map[ii] << std::endl;
 					price_read = price_stream_out.read();
 					std::cout << price_read.price << " " << price_read.size << std::endl;
 					if (price_read.price != 0){

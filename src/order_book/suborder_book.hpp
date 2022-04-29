@@ -3,7 +3,10 @@
 #include "common.hpp"
 #include "utils.hpp"
 
-//#define __DEBUG__
+
+#ifndef __SUBORDER_BOOK_H__
+#define __SUBORDER_BOOK_H__
+#define __DEBUG__
 
 void dut_suborder_book(
 	orderMessage order_message,
@@ -710,3 +713,5 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::suborder_book(
 	book_maintain(order_message);
 
 }
+
+#endif

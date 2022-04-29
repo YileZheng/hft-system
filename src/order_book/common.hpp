@@ -7,6 +7,8 @@
 
 // using namespace hls;
 
+#ifndef __COMMON_H__
+#define __COMMON_H__
 typedef ap_uint<48> Time;	/*Time stamp for round-trip latency measurements*/
 
 typedef signed int addr_index;
@@ -106,3 +108,4 @@ struct metadata {
     sockaddr_in destinationSocket;
 };
 
+#endif

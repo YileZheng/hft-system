@@ -10,6 +10,9 @@
 #define AS_UNIT 0.01
 #define AS_SLOTSIZE 10
 
+#ifndef __ORDER_BOOK_H__
+#define __ORDER_BOOK_H__
+
 int symbol_mapping(
 	symbol_t symbol_map[STOCKS],
 	symbol_t symbol
@@ -50,3 +53,5 @@ void order_book_system(
 	char axi_instruction  // void, run, halt, read book, clear, config symbol map | read_max 
 
 );
+
+#endif
