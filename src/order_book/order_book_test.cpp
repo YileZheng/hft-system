@@ -21,25 +21,49 @@ using namespace std;
 #define SLOTSIZE 10
 #define READ_MAX 10
 #define STOCK_TEST 3
-
-
-vector<string> split_string(std::string s,std::string delimiter);
-string concat_string(vector<vector<price_depth>> pd, std::string delimiter, int level);
-void check_update_last_price(vector<string> orderBook_split, int price_lasta_init, int price_lastb_init, int vol_lasta_init, int vol_lastb_init);
 int read_max = READ_MAX;
-char symbols[STOCK_TEST][8] =  {{'A','A','P','L','\s','\s','\s','\s'},
-								{'A','M','Z','N','\s','\s','\s','\s'},
-								{'G','O','O','G','\s','\s','\s','\s'}};
+char symbols[STOCK_TEST][8] =  {{'A','A','P','L',' ',' ',' ',' '},
+								{'A','M','Z','N',' ',' ',' ',' '},
+								{'G','O','O','G',' ',' ',' ',' '}};
 
 // config
 symbol_t *symbol_map=(symbol_t*)symbols;
 
 
-union symbolTrans_t
-{
-	char charct[8];
-	symbol_t bin;
+vector<string> split_string(std::string s,std::string delimiter);
+string concat_string(vector<vector<price_depth>> pd, std::string delimiter, int level);
+void check_update_last_price(vector<string> orderBook_split, int price_lasta_init, int price_lastb_init, int vol_lasta_init, int vol_lastb_init);
+
+class last_manager{
+	map<int, int> cache_last;
+	vector<pair<int, int>> cache_lasta, cache_lastb;
+	int price_last_b, price_last_a;
+	int vol_last_b, vol_last_a;
+	hls::stream<price_depth> price_stream_out;
+	hls::stream<Message> stream_in;
+	int cache_max_len = 10;
+	symbol_t cur_symbol;
+
+	public:
+	last_manager(
+		int price_lasta_init,
+		int price_lastb_init,
+		int vol_lasta_init,
+		int vol_lastb_init,
+		symbol_t cur_symbol_init
+	){
+		price_last_b=price_lastb_init, price_last_a=price_lasta_init;
+		vol_last_b=vol_lastb_init, vol_last_a=vol_lasta_init;
+		cur_symbol = cur_symbol_init;
+	}
+
+	void check_update_last_price(
+		vector<string> orderBook_split,
+		Time tmstmp
+	);
+
 };
+
 
 
 int main()
@@ -135,7 +159,7 @@ int main()
 				qty = *(++it);
 				input_in.price = (price_t)(stof(pr)/MULTI); input_in.size = (qty_t)(stof(qty)); input_in.orderID = (size_t)1;
 				bid++;
-				input_in.timestamp = 34200*1000000000;
+				input_in.timestamp = (Time)34200*1000000000;
 				input_in.symbol = symbol_map[ii];
 				input_in.operation = odop;
 				input_in.side = bid;
@@ -357,36 +381,6 @@ string concat_string(
 	return std::string(ss.str());
 }
 
-
-class last_manager{
-	map<int, int> cache_last;
-	vector<pair<int, int>> cache_lasta, cache_lastb;
-	int price_last_b, price_last_a;
-	int vol_last_b, vol_last_a;
-	hls::stream<price_depth> price_stream_out;
-	hls::stream<Message> stream_in;
-	int cache_max_len = 10;
-	symbol_t cur_symbol;
-
-	public:
-	last_manager(
-		int price_lasta_init,
-		int price_lastb_init,
-		int vol_lasta_init,
-		int vol_lastb_init,
-		symbol_t cur_symbol_init
-	){
-		price_last_b=price_lastb_init, price_last_a=price_lasta_init;
-		vol_last_b=vol_lastb_init, vol_last_a=vol_lasta_init;
-		cur_symbol = cur_symbol_init;
-	}
-
-	void check_update_last_price(
-		vector<string> orderBook_split,
-		Time tmstmp
-	);
-
-};
 
 void last_manager::check_update_last_price(
 	vector<string> orderBook_split,

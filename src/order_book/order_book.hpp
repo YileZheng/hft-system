@@ -1,4 +1,4 @@
-#include "common.hpp"
+#include "suborder_book.hpp"
 #include <hls_stream.h>
 
 #define CAPACITY 1024   // up to 4096, number of orders in each side
