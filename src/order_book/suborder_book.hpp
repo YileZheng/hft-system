@@ -72,8 +72,8 @@ class SubOrderBook{
 	public:
 	// constructor
 	SubOrderBook(){
-		SLOTSIZE = AS_SLOTSIZE;
-		UNIT = (price_t)AS_UNIT_T;
+		SLOTSIZE = 10;
+		UNIT = (price_t)0.01;
 		UNIT_SLOT = SLOTSIZE*UNIT;
 	}
 

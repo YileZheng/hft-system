@@ -37,14 +37,15 @@ void check_update_last_price(vector<string> orderBook_split, int price_lasta_ini
 class last_manager{
 	map<int, int> cache_last;
 	vector<pair<int, int>> cache_lasta, cache_lastb;
-	int price_last_b, price_last_a;
-	int vol_last_b, vol_last_a;
 	hls::stream<price_depth> price_stream_out;
 	hls::stream<Message> stream_in;
 	int cache_max_len = 10;
-	symbol_t cur_symbol;
 
 	public:
+	int price_last_b, price_last_a;
+	int vol_last_b, vol_last_a;
+	symbol_t cur_symbol;
+	
 	last_manager(
 		int price_lasta_init,
 		int price_lastb_init,
@@ -55,6 +56,15 @@ class last_manager{
 		price_last_b=price_lastb_init, price_last_a=price_lasta_init;
 		vol_last_b=vol_lastb_init, vol_last_a=vol_lasta_init;
 		cur_symbol = cur_symbol_init;
+	}
+
+	last_manager(last_manager &l){
+		price_last_b=l.price_last_b;
+		price_last_a=l.price_last_a;
+		vol_last_b=l.vol_last_b;
+		vol_last_a=l.vol_last_a;
+		cur_symbol = l.cur_symbol;
+
 	}
 
 	void check_update_last_price(
