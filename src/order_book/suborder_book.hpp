@@ -6,7 +6,7 @@
 
 #ifndef __SUBORDER_BOOK_H__
 #define __SUBORDER_BOOK_H__
-#define __DEBUG__
+//#define __DEBUG__
 
 void dut_suborder_book(
 	orderMessage order_message,
