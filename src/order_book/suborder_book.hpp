@@ -673,7 +673,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 	show_ind = cur_block.next;
 	std::cout<<std::endl;
 #endif
-						if ((cur_block.next != INVALID_LINK) || (read_cnt != 0))
+						if ((cur_block.next != INVALID_LINK) && (read_cnt != 0))
 							cur_block = book[cur_block.next];
 						else break;
 					}
