@@ -75,6 +75,7 @@ void order_book_system(
 
 
 	// order symbol mapping
+	STREAM_IN_READ:
 	while (!stream_in.empty()){
 		message_in = stream_in.read();
 		if (!halt){
@@ -108,16 +109,12 @@ void update_symbol_map(
 	symbol_t axi_symbol_map[STOCKS],
 	symbol_t symbol_map[STOCKS]
 ){
+	UPDATE_SYMBOL_MAP:
 	for (int i=0; i<STOCKS; i++){
 		*(symbol_map+i) = *(axi_symbol_map+i);
 	}
 }
 
-void controller(
-
-){
-
-}
 
 void routine_subbooks(
 	ap_uint<8> read_max,
@@ -127,7 +124,7 @@ void routine_subbooks(
 
 	hls::stream<price_depth> &stream_out
 ){
-
+	ROUTINE_SUBBOOKS:
 	for (int i=0; i<STOCKS; i++){
 #pragma HLS UNROLL
 		ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
@@ -144,6 +141,7 @@ void update_subbooks(
 	orderMessage ordermessage_in
 ){
 	// update books on message event
+	UPDATE_SUBBOOKS:
 	for (int i=0; i<STOCKS; i++){
 #pragma HLS UNROLL
 		if (i == index_msg){
@@ -169,6 +167,7 @@ int symbol_mapping(
 ){
 #pragma HLS INLINE off
 	int index=-1;
+	SYMBOL_MAPPING:
 	for (int i=0; i<STOCKS; i++){
 #pragma HLS UNROLL
 		if (symbol_map[i]==symbol){
