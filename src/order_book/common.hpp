@@ -72,6 +72,12 @@ struct Message{
     ap_uint<1> side;
 };
 
+struct transMessage{
+    orderMessage ordermessage;
+    ap_uint<1> valid;
+};
+
+
 struct sub_order
 {
     qty_t size;        

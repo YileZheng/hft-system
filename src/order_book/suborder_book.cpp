@@ -18,6 +18,7 @@ void dut_suborder_book(
 ){
 	
 	static SubOrderBook<RANGE, CHAIN_LEVELS> dut(AS_SLOTSIZE, AS_UNIT);
-	dut.suborder_book(order_message, read_max, req_read_in, feed_stream_out);
+	transMessage trans_message={order_message, 1};
+	dut.suborder_book(trans_message, read_max, req_read_in, feed_stream_out);
 }
 

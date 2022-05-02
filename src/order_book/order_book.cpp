@@ -73,37 +73,46 @@ void order_book_system(
 	} 
 	instruction = 'v';
 
+	// read symbol mapping
+	if (en_read){
+		index_read = symbol_mapping(symbol_map, axi_read_symbol);
+#ifdef __DEBUG__
+			if (!(index_read>=0)&&(index_read<STOCKS)){
+				printf("Read symbol not found in the local symbol map, discard!!!!!!!!");
+			}
+#endif
+		read_req_concat = (0x1<<index_read);
+		en_read = 0;
+	}
 
 	// order symbol mapping
 	STREAM_IN_READ:
 	while (!stream_in.empty()){
 		message_in = stream_in.read();
-		if (!halt){
-			ordermessage_in.order_info.orderID = message_in.orderID;
-			ordermessage_in.order_info.size = message_in.size;
-			ordermessage_in.order_info.price = message_in.price;
-			ordermessage_in.operation = message_in.operation;
-			ordermessage_in.side = message_in.side;
-			index_msg = symbol_mapping(symbol_map, message_in.symbol);
+		ordermessage_in.order_info.orderID = message_in.orderID;
+		ordermessage_in.order_info.size = message_in.size;
+		ordermessage_in.order_info.price = message_in.price;
+		ordermessage_in.operation = message_in.operation;
+		ordermessage_in.side = message_in.side;
+		index_msg = symbol_mapping(symbol_map, message_in.symbol);
 #ifdef __DEBUG__
 			if (!(index_msg>=0)&&(index_msg<STOCKS)){
 				printf("Input symbol not found in the local symbol map, discard!!!!!!!!");
 			}
 #endif
-			update_subbooks(index_msg, books, ordermessage_in);
+		ROUTINE_SUBBOOKS:
+		for (int i=0; i<STOCKS; i++){
+	#pragma HLS UNROLL
+			transMessage transmessage_in = {ordermessage_in, {((index_msg==i)&&(!halt))?1:0}};
+			ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
+			books[i].suborder_book(transmessage_in, read_max, read_req, stream_out);
 		}
+		
 	}
-
-	// read symbol mapping
-	if (en_read){
-		index_read = symbol_mapping(symbol_map, axi_read_symbol);
-		read_req_concat = (0x1<<index_read);
-		en_read = 0;
-	}
-
-	routine_subbooks(read_max, read_req_concat, books, stream_out);
+	read_req_concat = 0;
 
 }
+
 
 void update_symbol_map(
 	symbol_t axi_symbol_map[STOCKS],
@@ -112,52 +121,6 @@ void update_symbol_map(
 	UPDATE_SYMBOL_MAP:
 	for (int i=0; i<STOCKS; i++){
 		*(symbol_map+i) = *(axi_symbol_map+i);
-	}
-}
-
-
-void routine_subbooks(
-	ap_uint<8> read_max,
-	ap_uint<STOCKS> &read_req_concat,
-	
-	SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS],
-
-	hls::stream<price_depth> &stream_out
-){
-	ROUTINE_SUBBOOKS:
-	for (int i=0; i<STOCKS; i++){
-#pragma HLS UNROLL
-		ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
-		books[i].subbook_controller(read_req);
-		books[i].book_read(read_max, stream_out);		// TODO: parallel streaming channel reusing confliction?
-	}
-	read_req_concat = 0;
-}
-
-void update_subbooks(
-	int index_msg,
-	SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS],
-
-	orderMessage ordermessage_in
-){
-	// update books on message event
-	UPDATE_SUBBOOKS:
-	for (int i=0; i<STOCKS; i++){
-#pragma HLS UNROLL
-		if (i == index_msg){
-			books[i].book_maintain(ordermessage_in);
-		}
-	}
-
-}
-
-void init_books(
-	int slotsize,
-	float unit,
-	SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]
-){
-	for (int i=0; i<STOCKS; i++){
-		books[i].config(slotsize, unit);
 	}
 }
 
@@ -176,3 +139,48 @@ int symbol_mapping(
 	}
 	return index;
 }
+
+// void routine_subbooks(
+// 	ap_uint<8> read_max,
+// 	ap_uint<STOCKS> &read_req_concat,
+	
+// 	SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS],
+
+// 	hls::stream<price_depth> &stream_out
+// ){
+// 	ROUTINE_SUBBOOKS:
+// 	for (int i=0; i<STOCKS; i++){
+// #pragma HLS UNROLL
+// 		ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
+// 		books[i].suborder_book(ordermessage_in, read_max, read_req, stream_out);
+// 	}
+// 	read_req_concat = 0;
+// }
+
+// void update_subbooks(
+// 	int index_msg,
+// 	SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS],
+
+// 	orderMessage ordermessage_in
+// ){
+// 	// update books on message event
+// 	UPDATE_SUBBOOKS:
+// 	for (int i=0; i<STOCKS; i++){
+// #pragma HLS UNROLL
+// 		if (i == index_msg){
+// 			books[i].book_maintain(ordermessage_in);
+// 		}
+// 	}
+
+// }
+
+// void init_books(
+// 	int slotsize,
+// 	float unit,
+// 	SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]
+// ){
+// 	for (int i=0; i<STOCKS; i++){
+// 		books[i].config(slotsize, unit);
+// 	}
+// }
+

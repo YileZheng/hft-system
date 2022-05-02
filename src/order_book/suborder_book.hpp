@@ -112,11 +112,11 @@ class SubOrderBook{
 
 	// orderbook update
 	void book_maintain(
-		orderMessage order_message
+		transMessage trans_message
 	);
 
 	void suborder_book(
-		orderMessage order_message,
+		transMessage trans_message,
 		ap_uint<8> read_max,
 		ap_uint<1> req_read_in,
 		hls::stream<price_depth> &feed_stream_out
@@ -577,11 +577,12 @@ std::cout<<std::endl;
 
 template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::book_maintain(
-	orderMessage order_message
+	transMessage trans_message
 ){
+	if (order_message.valid){
+		order_message_fifo.write(trans_message.ordermessage);
+	}
 
-	order_message_fifo.write(order_message);
-	
 	if (update_en){
 		addr_index bookIndex;
 		order order_info;
@@ -701,7 +702,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read_wrap(
 // main management
 template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::suborder_book(
-	orderMessage order_message,
+	transMessage trans_message,
 	ap_uint<8> read_max,
 	ap_uint<1> req_read_in,
 	hls::stream<price_depth> &feed_stream_out
@@ -710,7 +711,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::suborder_book(
 	subbook_controller(req_read_in);
 	// read process
 	book_read(read_max, feed_stream_out); 
-	book_maintain(order_message);
+	book_maintain(trans_message);
 
 }
 
