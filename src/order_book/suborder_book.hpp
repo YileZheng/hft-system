@@ -579,7 +579,7 @@ template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::book_maintain(
 	transMessage trans_message
 ){
-	if (order_message.valid){
+	if (trans_message.valid){
 		order_message_fifo.write(trans_message.ordermessage);
 	}
 
