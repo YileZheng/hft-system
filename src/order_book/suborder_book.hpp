@@ -97,7 +97,7 @@ class SubOrderBook{
 	void book_read(
 		ap_uint<8> read_max,
 		// hls::stream<price_depth> &feed_stream_out
-		price_depth *out_buffer
+		price_depth out_buffer[STREAMOUT_BUFFER_SIZE]
 	);
 
 	// controller
@@ -115,7 +115,7 @@ class SubOrderBook{
 		ap_uint<8> read_max,
 		ap_uint<1> req_read_in,
 		// hls::stream<price_depth> &feed_stream_out
-		price_depth *out_buffer
+		price_depth out_buffer[STREAMOUT_BUFFER_SIZE]
 	);
 
 };
@@ -630,7 +630,7 @@ template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 	ap_uint<8> read_max,
 	// hls::stream<price_depth> &feed_stream_out
-	price_depth *out_buffer
+	price_depth out_buffer[STREAMOUT_BUFFER_SIZE]
 ){
 	price_depth dummy;
 	dummy.price = 0;
@@ -638,7 +638,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 	price_depth lvl_out;
 	price_depth_chain cur_block;
 	ap_uint<1> req_read = read_en;
-	int ind, read_cnt;
+	int ind, read_cnt, stream_cnt=0;
 
 	if (read_DONE) read_DONE = 0;
 
@@ -664,7 +664,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 						lvl_out.price = cur_block.price;
 						lvl_out.size = cur_block.size;
 						// feed_stream_out.write(lvl_out);
-						*(out_buffer++) = lvl_out;
+						out_buffer[stream_cnt++] = lvl_out;
 						read_cnt--;
 #ifdef __DEBUG__
 	std::cout<<"DEBUG - ";
@@ -679,7 +679,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 				}
 			}
 			// feed_stream_out.write(dummy);
-			*(out_buffer++) = dummy;
+			out_buffer[stream_cnt++] = dummy;
 		}
 		read_DONE = 1;
 	}
@@ -692,7 +692,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::suborder_book(
 	ap_uint<8> read_max,
 	ap_uint<1> req_read_in,
 	// hls::stream<price_depth> &feed_stream_out
-	price_depth *out_buffer
+	price_depth out_buffer[STREAMOUT_BUFFER_SIZE]
 ){
 
 	subbook_controller(req_read_in);

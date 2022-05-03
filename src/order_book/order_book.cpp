@@ -28,7 +28,7 @@ void order_book_system(
 	
 	static SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]={{AS_SLOTSIZE, AS_UNIT}};  // TODO
 	static symbol_t symbol_map[STOCKS];
-	static price_depth stream_out_buffer[STOCKS][120];
+	static price_depth stream_out_buffer[STOCKS][STREAMOUT_BUFFER_SIZE];
 	static ap_uint<STOCKS> read_req_concat=0;
 	static ap_uint<8> read_max=10;
 	
