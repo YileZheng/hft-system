@@ -28,6 +28,7 @@ void order_book_system(
 	
 	static SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]={{AS_SLOTSIZE, AS_UNIT}};  // TODO
 	static symbol_t symbol_map[STOCKS];
+	static price_depth stream_out_buffer[STOCKS][120];
 	static ap_uint<STOCKS> read_req_concat=0;
 	static ap_uint<8> read_max=10;
 	
@@ -82,7 +83,6 @@ void order_book_system(
 			}
 #endif
 		read_req_concat = (0x1<<index_read);
-		en_read = 0;
 	}
 
 	// order symbol mapping
@@ -102,14 +102,22 @@ void order_book_system(
 #endif
 		ROUTINE_SUBBOOKS:
 		for (int i=0; i<STOCKS; i++){
-	#pragma HLS UNROLL
+#pragma HLS UNROLL
 			transMessage transmessage_in = {ordermessage_in, {((index_msg==i)&&(!halt))?1:0}};
 			ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
-			books[i].suborder_book(transmessage_in, read_max, read_req, stream_out);
+			books[i].suborder_book(transmessage_in, read_max, read_req, stream_out_buffer[i]);
 		}
 		
 	}
-	read_req_concat = 0;
+
+	if (en_read){
+		READ_STREAM_BUFFER:
+		for (int i=0; i<(2*read_max)+2; i++){
+			stream_out.write(stream_out_buffer[index_read][i]);
+		}
+		en_read = 0;
+		read_req_concat = 0;
+	}
 
 }
 

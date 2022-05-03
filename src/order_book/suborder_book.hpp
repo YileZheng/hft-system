@@ -96,15 +96,10 @@ class SubOrderBook{
 	// orderbook read
 	void book_read(
 		ap_uint<8> read_max,
-		hls::stream<price_depth> &feed_stream_out
+		// hls::stream<price_depth> &feed_stream_out
+		price_depth *out_buffer
 	);
 
-	void book_read_wrap(
-		ap_uint<8> read_max,
-		ap_uint<1> req_read_in,
-		hls::stream<price_depth> &feed_stream_out
-	);
-	
 	// controller
 	void subbook_controller(
 		ap_uint<1> &req_read_in
@@ -119,7 +114,8 @@ class SubOrderBook{
 		transMessage trans_message,
 		ap_uint<8> read_max,
 		ap_uint<1> req_read_in,
-		hls::stream<price_depth> &feed_stream_out
+		// hls::stream<price_depth> &feed_stream_out
+		price_depth *out_buffer
 	);
 
 };
@@ -633,7 +629,8 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::subbook_controller(
 template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 	ap_uint<8> read_max,
-	hls::stream<price_depth> &feed_stream_out
+	// hls::stream<price_depth> &feed_stream_out
+	price_depth *out_buffer
 ){
 	price_depth dummy;
 	dummy.price = 0;
@@ -666,7 +663,8 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 #pragma HLS PIPELINE
 						lvl_out.price = cur_block.price;
 						lvl_out.size = cur_block.size;
-						feed_stream_out.write(lvl_out);
+						// feed_stream_out.write(lvl_out);
+						*(out_buffer++) = lvl_out;
 						read_cnt--;
 #ifdef __DEBUG__
 	std::cout<<"DEBUG - ";
@@ -680,23 +678,11 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 					}
 				}
 			}
-			feed_stream_out.write(dummy);
+			// feed_stream_out.write(dummy);
+			*(out_buffer++) = lvl_out;
 		}
 		read_DONE = 1;
 	}
-}
-
-template <int RANGE, int CHAIN_LEVELS>
-void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read_wrap(
-		ap_uint<8> read_max,
-		ap_uint<1> req_read_in,
-		hls::stream<price_depth> &feed_stream_out
-){
-
-	subbook_controller(req_read_in);
-	// read process
-	book_read(read_max, feed_stream_out); 
-	
 }
 
 // main management
@@ -705,12 +691,13 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::suborder_book(
 	transMessage trans_message,
 	ap_uint<8> read_max,
 	ap_uint<1> req_read_in,
-	hls::stream<price_depth> &feed_stream_out
+	// hls::stream<price_depth> &feed_stream_out
+	price_depth *out_buffer
 ){
 
 	subbook_controller(req_read_in);
 	// read process
-	book_read(read_max, feed_stream_out); 
+	book_read(read_max, out_buffer); 
 	book_maintain(trans_message);
 
 }
