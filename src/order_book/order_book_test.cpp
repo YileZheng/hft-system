@@ -94,6 +94,7 @@ int main()
 	// vector<ifstream *> message_ls(STOCK_TEST),  orderbook_ls(STOCK_TEST);
 	// vector<last_manager *> last_ls(STOCK_TEST);
 	last_manager* last_ls[STOCK_TEST];
+	string last_orderbook_line_ls[STOCK_TEST];
 	ifstream new_file;
 	ofstream result, answer;
 
@@ -205,6 +206,7 @@ int main()
 			last_manager* last = new last_manager(pricea_init, priceb_init, vola_init, volb_init,symbol_map[ii]);
 			// last_ls.push_back(&last);
 			last_ls[ii] = last;
+			last_orderbook_line_ls[ii] = orderbook_line;
 		}
 	}
 
@@ -288,20 +290,21 @@ int main()
 				}
 
 				if (req_read==1){
+					string last_orderbook_line = last_orderbook_line_ls[ii];
 					stat[3].push_back(elapsed_ms);
 					string s = concat_string(resultbook, string(","), level);
-					if (s.compare(orderbook_line) != 0){
+					if (s.compare(last_orderbook_line) != 0){
 						std::cout <<"Symbol: " <<symbol_map[ii]<<": Result orderbook not match !!!!!!!!" <<std::endl;
-						std::cout <<"Ground Truth: "<< orderbook_line << std::endl;
+						std::cout <<"Ground Truth: "<< last_orderbook_line << std::endl;
 						std::cout <<"OrderBook:    "<< s << std::endl;
 					}
 					result << s << endl;
-					answer << orderbook_line << endl;
+					answer << last_orderbook_line << endl;
 				}
 				else{
 					stat[(int)odop].push_back(elapsed_ms);
 				}
-				
+				last_orderbook_line_ls[ii] = orderbook_line;
 				std::cout<<std::endl;
 			}
 			else{
