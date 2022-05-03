@@ -679,7 +679,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 				}
 			}
 			// feed_stream_out.write(dummy);
-			*(out_buffer++) = lvl_out;
+			*(out_buffer++) = dummy;
 		}
 		read_DONE = 1;
 	}
