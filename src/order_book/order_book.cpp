@@ -10,7 +10,6 @@ void order_book_system(
 	hls::stream<price_depth> &stream_out,
 
 	// configuration inputs
-	symbol_t axi_symbol_map[STOCKS],
 	symbol_t axi_read_symbol,
 	ap_uint<8> axi_read_max,
 
@@ -24,11 +23,13 @@ void order_book_system(
 #pragma HLS INTERFACE s_axilite port=axi_read_symbol bundle=BUS_A
 #pragma HLS INTERFACE s_axilite port=axi_read_max bundle=BUS_A
 #pragma HLS INTERFACE s_axilite port=return bundle=BUS_A
-#pragma HLS INTERFACE m_axi port=axi_symbol_map
 
 	
 	static SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]={{AS_SLOTSIZE, AS_UNIT}};  // TODO
-	static symbol_t symbol_map[STOCKS];
+	// 10 stock symbols: "AAPL", "AMZN", "GOOG",  "INTC", "MSFT",  "SPY", "TSLA", "NVDA", "AMD", "QCOM"
+	static symbol_t symbol_map[STOCKS] = {  0x4141504c20202020, 0x414d5a4e20202020, 0x474f4f4720202020, 0x494e544320202020, 
+											0x4d53465420202020, 0x5350592020202020, 0x54534c4120202020, 0x4e56444120202020, 
+											0x414d442020202020, 0x51434f4d20202020};
 	static price_depth stream_out_buffer[STOCKS][STREAMOUT_BUFFER_SIZE];
 	static ap_uint<STOCKS> read_req_concat=0;
 	static ap_uint<8> read_max=10;
@@ -41,7 +42,6 @@ void order_book_system(
 	Message message_in;
 	orderMessage ordermessage_in;
 	int index_msg, index_read;
-	ap_uint<1> en_update_map=0;
 
 	// control
 	instruction = axi_instruction;
@@ -62,15 +62,11 @@ void order_book_system(
 		en_clear = 1;
 		break;
 	case 's':	// update symbol map
-		en_update_map = 1;
-//		update_symbol_map(axi_symbol_map, symbol_map);
 		break;
 	case 'm':	// update read max 
 		read_max = axi_read_max;
 		break;
 	case 'A': 	// config all
-		en_update_map = 1;
-//		update_symbol_map(axi_symbol_map, symbol_map);
 		read_max = axi_read_max;
 
 	default:
@@ -78,10 +74,6 @@ void order_book_system(
 	} 
 	instruction = 'v';
 
-	if (en_update_map){
-		update_symbol_map(axi_symbol_map, symbol_map);
-		en_update_map = 0;
-	}
 
 	// read symbol mapping
 	if (en_read){
@@ -130,17 +122,6 @@ void order_book_system(
 
 }
 
-
-void update_symbol_map(
-	symbol_t axi_symbol_map[STOCKS],
-	symbol_t symbol_map[STOCKS]
-){
-	UPDATE_SYMBOL_MAP:
-	for (int i=0; i<STOCKS; i++){
-		symbol_map[i] = axi_symbol_map[i];
-//		*(symbol_map+i) = *(axi_symbol_map+i);
-	}
-}
 
 int symbol_mapping(
 	symbol_t symbol_map[STOCKS],
