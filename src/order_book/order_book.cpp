@@ -24,6 +24,7 @@ void order_book_system(
 #pragma HLS INTERFACE s_axilite port=axi_read_symbol bundle=BUS_A
 #pragma HLS INTERFACE s_axilite port=axi_read_max bundle=BUS_A
 #pragma HLS INTERFACE s_axilite port=return bundle=BUS_A
+#pragma HLS INTERFACE m_axi port=axi_symbol_map
 
 	
 	static SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]={{AS_SLOTSIZE, AS_UNIT}};  // TODO
@@ -40,6 +41,7 @@ void order_book_system(
 	Message message_in;
 	orderMessage ordermessage_in;
 	int index_msg, index_read;
+	ap_uint<1> en_update_map=0;
 
 	// control
 	instruction = axi_instruction;
@@ -60,19 +62,26 @@ void order_book_system(
 		en_clear = 1;
 		break;
 	case 's':	// update symbol map
-		update_symbol_map(axi_symbol_map, symbol_map);
+		en_update_map = 1;
+//		update_symbol_map(axi_symbol_map, symbol_map);
 		break;
 	case 'm':	// update read max 
 		read_max = axi_read_max;
 		break;
 	case 'A': 	// config all
-		update_symbol_map(axi_symbol_map, symbol_map);
+		en_update_map = 1;
+//		update_symbol_map(axi_symbol_map, symbol_map);
 		read_max = axi_read_max;
 
 	default:
 		break;
 	} 
 	instruction = 'v';
+
+	if (en_update_map){
+		update_symbol_map(axi_symbol_map, symbol_map);
+		en_update_map = 0;
+	}
 
 	// read symbol mapping
 	if (en_read){
@@ -128,7 +137,8 @@ void update_symbol_map(
 ){
 	UPDATE_SYMBOL_MAP:
 	for (int i=0; i<STOCKS; i++){
-		*(symbol_map+i) = *(axi_symbol_map+i);
+		symbol_map[i] = axi_symbol_map[i];
+//		*(symbol_map+i) = *(axi_symbol_map+i);
 	}
 }
 

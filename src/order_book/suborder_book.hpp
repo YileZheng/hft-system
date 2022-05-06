@@ -31,7 +31,7 @@ class SubOrderBook{
 
 	// hole management
 	hls::stream<link_t, CHAIN_LEVELS> hole_fifo;//("hole fifo");
-	hls::stream<orderMessage, 20> order_message_fifo;//("order fifo");		//TODO
+	hls::stream<orderMessage, 30> order_message_fifo;//("order fifo");		//TODO
 	link_t stack_top = RANGE*2;
 
 	// control signal
