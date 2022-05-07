@@ -17,20 +17,25 @@ void order_book_system(
 	char axi_instruction  // void, run, halt, read book, clear, config symbol map | read_max 
 
 ){
+#pragma HLS TOP name=order_book_system
 #pragma HLS INTERFACE axis register_mode=both register port=stream_in
 #pragma HLS INTERFACE axis register_mode=both register port=stream_out
 #pragma HLS INTERFACE s_axilite port=axi_instruction bundle=BUS_A
 #pragma HLS INTERFACE s_axilite port=axi_read_symbol bundle=BUS_A
 #pragma HLS INTERFACE s_axilite port=axi_read_max bundle=BUS_A
-#pragma HLS INTERFACE s_axilite port=return bundle=BUS_A
+#pragma HLS INTERFACE ap_ctrl_none port=return 
 
 	
-	static SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]={{AS_SLOTSIZE, AS_UNIT}};  // TODO
+	static SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]={{AS_SLOTSIZE, AS_UNIT}};
+#pragma HLS ARRAY_PARTITION variable=books dim=1 complete
+  // TODO
 	// 10 stock symbols: "AAPL", "AMZN", "GOOG",  "INTC", "MSFT",  "SPY", "TSLA", "NVDA", "AMD", "QCOM"
 	static symbol_t symbol_map[STOCKS] = {  0x4141504c20202020, 0x414d5a4e20202020, 0x474f4f4720202020, 0x494e544320202020, 
 											0x4d53465420202020, 0x5350592020202020, 0x54534c4120202020, 0x4e56444120202020, 
 											0x414d442020202020, 0x51434f4d20202020};
+#pragma HLS ARRAY_RESHAPE variable=symbol_map dim=1 complete
 	static price_depth stream_out_buffer[STOCKS][STREAMOUT_BUFFER_SIZE];
+#pragma HLS ARRAY_PARTITION variable=stream_out_buffer dim=1 complete
 	static ap_uint<STOCKS> read_req_concat=0;
 	static ap_uint<8> read_max=10;
 	

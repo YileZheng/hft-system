@@ -22,10 +22,13 @@ using namespace std;
 #define READ_MAX 10
 #define STOCK_TEST 3
 int read_max = READ_MAX;
-char symbols[STOCK_TEST][8] =  {{'A','A','P','L',' ',' ',' ',' '},
-								{'A','M','Z','N',' ',' ',' ',' '},
-								{'G','O','O','G',' ',' ',' ',' '}};
+//char symbols[STOCK_TEST][8] =  {{'A','A','P','L',' ',' ',' ',' '},
+//								{'A','M','Z','N',' ',' ',' ',' '},
+//								{'G','O','O','G',' ',' ',' ',' '}};
 
+char symbols[STOCK_TEST][8] =  {{' ',' ',' ',' ','L','P', 'A','A'},
+								{' ',' ',' ',' ', 'N','Z','M','A'},
+								{' ',' ',' ',' ', 'G','O','O','G'}};
 // config
 symbol_t *symbol_map=(symbol_t*)symbols;
 
@@ -119,7 +122,6 @@ int main()
 		stream_in,
 		price_stream_out,
 		// configuration inputs
-		symbol_map,
 		(symbol_t)0,
 		read_max,
 		// control input
@@ -132,7 +134,6 @@ int main()
 		stream_in,
 		price_stream_out,
 		// configuration inputs
-		symbol_map,
 		(symbol_t)0,
 		read_max,
 		// control input
@@ -191,7 +192,6 @@ int main()
 					stream_in,
 					price_stream_out,
 					// configuration inputs
-					symbol_map,
 					symbol_map[ii],
 					read_max,
 					// control input
@@ -265,7 +265,6 @@ int main()
 					stream_in,
 					price_stream_out,
 					// configuration inputs
-					symbol_map,
 					symbol_map[ii],
 					read_max,
 					// control input
@@ -469,7 +468,6 @@ void last_manager::check_update_last_price(
 					stream_in,
 					price_stream_out,
 					// configuration inputs
-					symbol_map,
 					cur_symbol,
 					read_max,
 					// control input
@@ -544,7 +542,6 @@ void last_manager::check_update_last_price(
 					stream_in,
 					price_stream_out,
 					// configuration inputs
-					symbol_map,
 					cur_symbol,
 					read_max,
 					// control input
