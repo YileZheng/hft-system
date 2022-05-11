@@ -46,6 +46,7 @@
 # large files
 *.zip
 *.csv
+data/
 
 # debug
 *demo*
