@@ -8,6 +8,7 @@
 #include "common.hpp"
 
 #define STOCK_TEST 3
+#define LEVEL_TEST 10
 
 using namespace std;
 
@@ -58,7 +59,7 @@ class last_manager{
 class messageManager{
 
 	int time_speedup = 1; // how many times faster to backtest, controls the message send rate
-	int level=10;
+	int level=LEVEL_TEST;
 
 	// files
 	string message_path[STOCK_TEST] =  {{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/AAPL_2012-06-21_34200000_57600000_message_10.csv"},
@@ -91,7 +92,7 @@ class messageManager{
 	ofstream result, answer;
 
 	// order stream
-	int id=-1;
+	long id=-1;
 
 	ap_uint<STOCK_TEST> neof = 0-1;
 
@@ -104,6 +105,7 @@ class messageManager{
 	vector<Message> generate_messages(int num);
 	bool check_resultbook(vector<price_depth> price_stream_out, symbol_t target_symbol);
 	bool final_check();
+	string get_true_orderbook(symbol_t target_symbol);
 	
 	messageManager(){
 		// open files

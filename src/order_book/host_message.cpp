@@ -27,6 +27,9 @@ int messageManager::get_symbol_loc(symbol_t target_symbol){
 	return -1;
 }
 
+string messageManager::get_true_orderbook(symbol_t target_symbol){
+	return last_orderbook_line_ls[get_symbol_loc(target_symbol)];
+}
 
 vector<Message> messageManager::init_book_messsages(){
 	// stream inputs
@@ -86,64 +89,62 @@ vector<Message> messageManager::generate_messages(
 	string line, orderbook_line;
 	vector<string> line_split;
 	while (neof){
-		for (int ii=0; ii<STOCK_TEST; ii++){
-			id++;
-			if (!message_ls[ii].eof()){
-				orderbook_ls[ii] >> orderbook_line;
-				message_ls[ii] >> line;
-				line_split = split_string(line, string(","));
+		id++;
+		int ii = id%STOCK_TEST;
+		if (!message_ls[ii].eof()){
+			orderbook_ls[ii] >> orderbook_line;
+			message_ls[ii] >> line;
+			line_split = split_string(line, string(","));
 
-				tstmp = line_split[0];
-				op = line_split[1];
-				oid = line_split[2];
-				qty = line_split[3];
-				pr = line_split[4];
-				ab = line_split[5];
+			tstmp = line_split[0];
+			op = line_split[1];
+			oid = line_split[2];
+			qty = line_split[3];
+			pr = line_split[4];
+			ab = line_split[5];
 
-				auto conpensate_list = last_ls[ii]->check_update_last_price(split_string(orderbook_line, string(",")),(Time)(stof(tstmp)*1000000000));
-				if (!conpensate_list.empty())
-					out_list.insert(out_list.end(), conpensate_list.begin(), conpensate_list.end());
+			auto conpensate_list = last_ls[ii]->check_update_last_price(split_string(orderbook_line, string(",")),(Time)(stof(tstmp)*1000000000));
+			if (!conpensate_list.empty())
+				out_list.insert(out_list.end(), conpensate_list.begin(), conpensate_list.end());
 
-				if ((op[0] == '5') || (op[0] == '7'))
-					continue;
+			if ((op[0] == '5') || (op[0] == '7'))
+				continue;
 
-				input_in.price = (price_t)(stof(pr)/MULTI); input_in.size = (qty_t)(stof(qty)); input_in.orderID = (size_t)(stoi(oid));
+			input_in.price = (price_t)(stof(pr)/MULTI); input_in.size = (qty_t)(stof(qty)); input_in.orderID = (size_t)(stoi(oid));
 
 
-				switch (op[0])
-				{
-					case '1':
-						odop = NEW;
-						break;
-					case '2':
-					case '3':
-					case '4':
-						odop = CHANGE;
-						input_in.size = -input_in.size;
-						break;
-					default:
-						break;
-				}
-
-				bid = (ab == "1")? 1: 0;
-				std::cout<<"Line: " << (id/STOCK_TEST) << " Symbol: " << string((char*)(symbol_map+ii), 8) <<" OrderID: "<<input_in.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< input_in.price <<" Volume: "<< input_in.size <<endl;
-
-				input_in.timestamp = (Time)(stof(tstmp)*1000000000);
-				input_in.symbol = symbol_map[ii];
-				input_in.operation = odop;
-				input_in.side = bid;
-				out_list.push_back(input_in);
-				
-				last_orderbook_line_ls[ii] = orderbook_line;
-				std::cout<<std::endl;
-				
-				if (--num == 0)		// to output a certain number of messages
-					return out_list;
-			}
-			else{
-				neof &= ~(ap_uint<STOCK_TEST>(0x1) << ii);
+			switch (op[0])
+			{
+				case '1':
+					odop = NEW;
+					break;
+				case '2':
+				case '3':
+				case '4':
+					odop = CHANGE;
+					input_in.size = -input_in.size;
+					break;
+				default:
+					break;
 			}
 
+			bid = (ab == "1")? 1: 0;
+			std::cout<<"Line: " << (id/STOCK_TEST) << " Symbol: " << string((char*)(symbol_map+ii), 8) <<" OrderID: "<<input_in.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< input_in.price <<" Volume: "<< input_in.size <<endl;
+
+			input_in.timestamp = (Time)(stof(tstmp)*1000000000);
+			input_in.symbol = symbol_map[ii];
+			input_in.operation = odop;
+			input_in.side = bid;
+			out_list.push_back(input_in);
+			
+			last_orderbook_line_ls[ii] = orderbook_line;
+			std::cout<<std::endl;
+			
+			if (--num == 0)		// to output a certain number of messages
+				return out_list;
+		}
+		else{
+			neof &= ~(ap_uint<STOCK_TEST>(0x1) << ii);
 		}
 	}
 	std::cout << "All messages ends." << std::endl;

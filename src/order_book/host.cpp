@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "common.hpp"
 #include "host_message.hpp"
@@ -150,34 +151,41 @@ int main(int argc, char* argv[]) {
 	// Data preparation -----------------------------
 
     // Compute the size of array in bytes
-    size_t size_in_bytes = DATA_SIZE * sizeof(int);
+    // size_t size_in_bytes = DATA_SIZE * sizeof(int);
     
-    // Creates a vector of DATA_SIZE elements with an initial value of 10 and 32
-    // using customized allocator for getting buffer alignment to 4k boundary
-    std::vector<int,aligned_allocator<int>> source_a(DATA_SIZE, 10);
-    std::vector<int,aligned_allocator<int>> source_b(DATA_SIZE, 32);
-    std::vector<int,aligned_allocator<int>> source_results(DATA_SIZE);
+    // // Creates a vector of DATA_SIZE elements with an initial value of 10 and 32
+    // // using customized allocator for getting buffer alignment to 4k boundary
+    // std::vector<int,aligned_allocator<int>> source_a(DATA_SIZE, 10);
+    // std::vector<int,aligned_allocator<int>> source_b(DATA_SIZE, 32);
+    // std::vector<int,aligned_allocator<int>> source_results(DATA_SIZE);
 
 	messageManager messages_handler;
 
-	map<string, long> symbol2hex = {{"AAPL", 0x4141504c20202020},
-									{"AMZN", 0x414d5a4e20202020},
-									{"GOOG", 0x474f4f4720202020},
-									{"INTC", 0x494e544320202020},
-									{"MSFT", 0x4d53465420202020},
-									{"SPY" , 0x5350592020202020},
-									{"TSLA", 0x54534c4120202020},
-									{"NVDA", 0x4e56444120202020},
-									{"AMD" , 0x414d442020202020},
-									{"QCOM", 0x51434f4d20202020}};
+	map<string, symbol_t> symbol2hex = {{"AAPL", 0x4141504c20202020},
+                                        {"AMZN", 0x414d5a4e20202020},
+                                        {"GOOG", 0x474f4f4720202020},
+                                        {"INTC", 0x494e544320202020},
+                                        {"MSFT", 0x4d53465420202020},
+                                        {"SPY" , 0x5350592020202020},
+                                        {"TSLA", 0x54534c4120202020},
+                                        {"NVDA", 0x4e56444120202020},
+                                        {"AMD" , 0x414d442020202020},
+                                        {"QCOM", 0x51434f4d20202020}};
 
-	symbol_t read_symbol = symbol2hex["AAPL"];
-	ap_uint<8> read_max = 10;
-	char instruction = 'A';
+
+    int MAX_WRITE = 1024, MAX_READ = 1024;
+    int WRITE_LENGTH = 1, READ_LENGTH = LEVEL_TEST+2;
+    Message *host_write_ptr;
+    price_depth *host_read_ptr; // = (int*) malloc(MAX_LENGTH*sizeof(int));
+    posix_memalign(&host_write_ptr, 4096, MAX_WRITE * sizeof(Message)); 
+    posix_memalign(&host_read_ptr, 4096, MAX_READ * sizeof(price_depth)); 
+    vector<Message> stream_data;
+    vector<price_depth> read_price;
 
 
 	// streamming ------------------------------
 
+    std::cout << "Create streams" << std::endl;
 	// Device connection specification of the stream through extension pointer
 	cl_mem_ext_ptr_t  ext;  // Extension pointer
 	ext.param = krnl_order_book;     // The .param should be set to kernel (cl_kernel type)
@@ -194,306 +202,153 @@ int main(int argc, char* argv[]) {
 
 
 	// Set kernel non-stream argument (if any)
+    std::cout << "Configure orderbook registers..." << std::endl;
+	symbol_t read_symbol = symbol2hex["AAPL"];
+	ap_uint<8> read_max = 10;
+	char instruction = 'A';
+    std::cout << "[Register] write - read_symbol = " << read_symbol << std::endl;
+    std::cout << "[Register] write - read_max    = " << read_max << std::endl;
+    std::cout << "[Register] write - instruction = " << instruction << std::endl;
 	clSetKernelArg(krnl_order_book, 2, sizeof(symbol_t), 	&read_symbol);
 	clSetKernelArg(krnl_order_book, 3, sizeof(char), 		&read_max);		// 64 bits here instead of 8
 	clSetKernelArg(krnl_order_book, 4, sizeof(char), 		&instruction);
 	// 3rd and 4th arguments are not set as those are already specified when creating the streams
 
+    usleep(100);
+    std::cout << "Start up orderbook system..." << std::endl;
+	char instruction = 'R';
+    std::cout << "[Register] write - instruction = " << instruction << std::endl;
 	clSetKernelArg(krnl_order_book, 4, sizeof(char), 		&instruction);
 	// // Schedule kernel enqueue
 	// clEnqueueTask(commands, kernel, . .. . );
 
-	// Initiate the READ transfer
-	cl_stream_xfer_req rd_req {0};
-	rd_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
-	rd_req.priv_data = (void*)"bookread"; // You can think this as tagging the transfer with a name
-	clReadStream(k2h_stream, host_read_ptr, max_read_size, &rd_req, &ret);
+
+
+    std::cout << "Initiate orderbook contents" << std::endl;
+
+    std::cout << "Prepare data..." << std::endl;
+    stream_data = messages_handler.init_book_messsages();
+    WRITE_LENGTH = stream_data.size();
+    // Aligning memory in 4K boundary
+    // Fill the memory input 
+    for(int i=0; i<WRITE_LENGTH; i++) {
+        host_mem_ptr[i] = stream_data[i]; 
+    }
 
 	// Initiating the WRITE transfer
+    std::cout << "Initiate write stream transfer" << std::endl;
 	cl_stream_xfer_req wr_req {0};
 	wr_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
 	wr_req.priv_data = (void*)"orderwrite";
+    int write_size = stream_data.size();
 	clWriteStream(h2k_stream, host_write_ptr, write_size, &wr_req , &ret);
 
-
 	// Checking the request completion, wait until finished
-	cl_streams_poll_req_completions poll_req[2] {0, 0}; // 2 Requests
-
-	auto num_compl = 2;
-	clPollStreams(device, poll_req, 2, 2, &num_compl, 100000, &ret);
+    std::cout << "Polling for completions of streaming.." << std::endl;
+	cl_streams_poll_req_completions poll_req[1] {0}; // 1 Requests
+	auto num_compl = 1;
+	clPollStreams(device, poll_req, 1, 1, &num_compl, 100000, &ret);
+    std::cout << "Polling complete" << std::endl;
 	// Blocking API, waits for 2 poll request completion or 100'000ms, whichever occurs first
 
-	for (auto i=0; i<2; ++i) {
+
+    usleep(1000);
+	// Initiate the READ transfer
+    std::cout << "Initiate read stream transfer" << std::endl;
+	cl_stream_xfer_req rd_req {0};
+	rd_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
+	rd_req.priv_data = (void*)"bookread"; // You can think this as tagging the transfer with a name
+	int max_read_size = MAX_READ;
+    clReadStream(k2h_stream, host_read_ptr, max_read_size, &rd_req, &ret);
+
+	// Checking the request completion, wait until finished
+    std::cout << "Polling for completions of streaming.." << std::endl;
+	cl_streams_poll_req_completions poll_req[1] {0}; // 1 Requests
+	auto num_compl = 1;
+	clPollStreams(device, poll_req, 2, 2, &num_compl, 100000, &ret);
+    std::cout << "Polling complete" << std::endl;
+
+    bool match;
+	for (auto i=0; i<1; ++i) {
 		if(rd_req.priv_data == poll_req[i].priv_data) { // Identifying the read transfer
 
-		// Getting read size, data size from kernel is unknown
-		ssize_t result_size=poll_req[i].nbytes;
+		    // Getting read size, data size from kernel is unknown
+            std::cout << "Orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
+		    ssize_t result_size=poll_req[i].nbytes;
+            int lvls = result_size/sizeof(price_depth);
+            read_price.clear();
+            for (int i=0; i< lvls; i++){
+                std::cout << "Price: " << host_read_ptr[i].price << " Size: " << host_read_ptr[i].size << std::endl;
+                read_price.push_back(host_read_ptr[i]);
+            }
+            match = messages_handler.check_resultbook(read_price, read_symbol);
 		}
 	}
+
+    return (match ? EXIT_FAILURE :  EXIT_SUCCESS);
+
+    // std::cout << "Streaming orderbook messages.." << std::endl;
+    // std::cout << "Preparing data..." << std::endl;
+    // int WRITE_LENGTH = 1, READ_LENGTH = LEVEL_TEST+2;
+    // Message *host_write_ptr, *host_read_ptr; // = (int*) malloc(MAX_LENGTH*sizeof(int));
+    // // Aligning memory in 4K boundary
+    // posix_memalign(&host_write_ptr,4096,WRITE_LENGTH*sizeof(Message)); 
+    // posix_memalign(&host_read_ptr,4096,READ_LENGTH*sizeof(Message)); 
+    // // Fill the memory input 
+    // auto stream_data = messages_handler.generate_messages(WRITE_LENGTH);
+    // if (stream_data.size() == WRITE_LENGTH){
+    //     for(int i=0; i<WRITE_LENGTH; i++) {
+    //         host_mem_ptr[i] = stream_data[i]; 
+    //     }
+    // }
 	// ----------------------------------
 
 
-    // These commands will allocate memory on the Device. The cl::Buffer objects can
-    // be used to reference the memory locations on the device. 
-    cl::Buffer buffer_a(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY,  
-            size_in_bytes, source_a.data());
-    cl::Buffer buffer_b(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY,  
-            size_in_bytes, source_b.data());
-    cl::Buffer buffer_result(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
-            size_in_bytes, source_results.data());
+    // // These commands will allocate memory on the Device. The cl::Buffer objects can
+    // // be used to reference the memory locations on the device. 
+    // cl::Buffer buffer_a(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY,  
+    //         size_in_bytes, source_a.data());
+    // cl::Buffer buffer_b(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY,  
+    //         size_in_bytes, source_b.data());
+    // cl::Buffer buffer_result(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
+    //         size_in_bytes, source_results.data());
     
-    // Data will be transferred from system memory over PCIe to the FPGA on-board
-    // DDR memory.
-    q.enqueueMigrateMemObjects({buffer_a,buffer_b},0/* 0 means from host*/);
+    // // Data will be transferred from system memory over PCIe to the FPGA on-board
+    // // DDR memory.
+    // q.enqueueMigrateMemObjects({buffer_a,buffer_b},0/* 0 means from host*/);
 
-    //set the kernel Arguments
+    // //set the kernel Arguments
 
-    krnl_vector_add.setArg(0,buffer_a);
-    krnl_vector_add.setArg(1,buffer_b);
-    krnl_vector_add.setArg(2,buffer_result);
-    krnl_vector_add.setArg(3,DATA_SIZE);
+    // krnl_vector_add.setArg(0,buffer_a);
+    // krnl_vector_add.setArg(1,buffer_b);
+    // krnl_vector_add.setArg(2,buffer_result);
+    // krnl_vector_add.setArg(3,DATA_SIZE);
 
-    krnl_const_add.setArg(0,buffer_result);
-    //Launch the Kernel
-    q.enqueueTask(krnl_vector_add);
-    q.enqueueTask(krnl_const_add);
-    // The result of the previous kernel execution will need to be retrieved in
-    // order to view the results. This call will transfer the data from FPGA to
-    // source_results vector
+    // krnl_const_add.setArg(0,buffer_result);
+    // //Launch the Kernel
+    // q.enqueueTask(krnl_vector_add);
+    // q.enqueueTask(krnl_const_add);
+    // // The result of the previous kernel execution will need to be retrieved in
+    // // order to view the results. This call will transfer the data from FPGA to
+    // // source_results vector
 
-    q.enqueueMigrateMemObjects({buffer_result},CL_MIGRATE_MEM_OBJECT_HOST);
+    // q.enqueueMigrateMemObjects({buffer_result},CL_MIGRATE_MEM_OBJECT_HOST);
 
-    q.finish();
+    // q.finish();
 
-    //Verify the result
-    int match = 0;
-    for (int i = 0; i < DATA_SIZE; i++) {
-			int host_result = source_a[i] + source_b[i] +1;
-        if (source_results[i] != host_result) {
-            printf(error_message.c_str(), i, host_result, source_results[i]);
-            match = 1;
-            break;
-        }
-    }
+    // //Verify the result
+    // int match = 0;
+    // for (int i = 0; i < DATA_SIZE; i++) {
+	// 		int host_result = source_a[i] + source_b[i] +1;
+    //     if (source_results[i] != host_result) {
+    //         printf(error_message.c_str(), i, host_result, source_results[i]);
+    //         match = 1;
+    //         break;
+    //     }
+    // }
 
-    std::cout << "TEST WITH TWO KERNELS " << (match ? "FAILED" : "PASSED") << std::endl; 
-    return (match ? EXIT_FAILURE :  EXIT_SUCCESS);
+    // std::cout << "TEST WITH TWO KERNELS " << (match ? "FAILED" : "PASSED") << std::endl; 
+    // return (match ? EXIT_FAILURE :  EXIT_SUCCESS);
 
 }
 
-
-vector<string> split_string(
-	std::string s,
-	std::string delimiter
-	){
-
-	size_t pos = 0;
-	std::string token;
-	vector<string> res;
-	while ((pos = s.find(delimiter)) != std::string::npos) {
-		token = s.substr(0, pos);
-		res.push_back(token);
-		s.erase(0, pos + delimiter.length());
-	}
-	res.push_back(s);
-//	std::cout << "Splitted line length: " << res.size() << std::endl;
-	return res;
-}
-
-string concat_string(
-	vector<vector<price_depth>> pd, 
-	std::string delimiter,
-	int level
-	){
-	float multiple = MULTI;
-
-	std::ostringstream ss;
-	price_depth cur_pd; 
-	int price;
-	int size;
-
-	vector<vector<price_depth>::iterator> iter_v, end_v;
-	for (std::vector<vector<price_depth>>::iterator it = pd.begin(); it != pd.end(); ++it){
-		iter_v.push_back(it->begin());
-		end_v.push_back(it->end());
-	}
-
-	for (int i=0; i<level; i++){
-		for (int ii = 0; ii < iter_v.size(); ++ii){
-			if (iter_v[ii] < end_v[ii]){
-				cur_pd = *(iter_v[ii]++);
-				price = (std::round(((float)cur_pd.price)/UNIT)*(multiple*UNIT));
-				size = cur_pd.size;
-			}else{
-				price = (ii == 0)? -9999999999: 9999999999;
-				size = 0;
-			}
-			ss<< price <<delimiter<< size;
-			if (!((i == level-1) && (ii == iter_v.size()-1))){
-				ss << delimiter;
-			}
-		}
-	}
-
-	return std::string(ss.str());
-}
-
-
-void last_manager::check_update_last_price(
-	vector<string> orderBook_split,
-	Time tmstmp
-){
-	orderOp odop;
-	ap_uint<1> bid, req_read=0;
-	Message input_in;
-	vector<pair<int, int>> *cache;
-
-	int offset, vol_cur, price_cur, target_price;
-	// bid at the end
-	offset = 0;
-	price_cur = stoi(*(orderBook_split.end()-2-4*offset)); 
-	while (price_cur == -9999999999){
-		price_cur = stoi(*(orderBook_split.end()-2-4*(++offset)));
-		cache_lastb.clear();
-	}
-	vol_cur = stoi(*(orderBook_split.end()-1-4*offset));
-
-	cache = &cache_lastb;
-	if (price_cur < price_last_b){
-		int vol_diff;
-		bool br = false;
-		while (true){
-			if (cache->size() > cache_max_len){
-					vol_diff = - cache->front().second;
-					target_price = cache->front().first;
-					cache->erase(cache->begin());
-			}
-			else
-			{
-				if ((price_cur > cache->back().first) || (cache->size()==0)){
-					// expected price maybe still behind, add this unexpected new price
-					br = true;
-					vol_diff = vol_cur;
-					target_price = price_cur;
-				}else if (price_cur == cache->back().first){
-					// hit the expected price
-					br = true;
-					vol_diff = vol_cur - cache->back().second;
-					target_price = price_cur;
-					cache->pop_back();
-				}else{
-					// expected price is removed from the book already, remove it untill get a new reasonable expected price
-					vol_diff = - cache->back().second;
-					target_price = cache->back().first;
-					cache->pop_back();
-				}
-			}
-			
-			if (vol_diff != 0){
-				input_in.price = (price_t)((float)(target_price)/MULTI); input_in.size = (qty_t)(vol_diff); input_in.orderID = 1000;
-				bid = 1;
-				odop = (vol_diff<0)? CHANGE: NEW;
-				std::cout <<"Change on price level at the end: ";
-				std::cout<<" Symbol: " << cur_symbol <<" OrderID: "<<input_in.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< input_in.price <<" Volume: "<< input_in.size <<" Read: "<<req_read<<endl;
-				input_in.timestamp = tmstmp;
-				input_in.symbol = cur_symbol;
-				input_in.operation = odop;
-				input_in.side = bid;
-				stream_in.write(input_in);
-				order_book_system(
-					// data
-					stream_in,
-					price_stream_out,
-					// configuration inputs
-					cur_symbol,
-					read_max,
-					// control input
-					'v'  // void, run, halt, read book, clear, config symbol map | read_max 
-				);
-			}
-			if (br) break;
-		}
-	}
-	else if (price_cur > price_last_b) // price at the end overflow
-	{
-		cache->push_back( make_pair(price_last_b, vol_last_b));
-		std::cout << "Price orderflow: "<< price_last_b << std::endl;
-	}
-	price_last_b = price_cur;
-	vol_last_b = vol_cur;
-	
-
-	// ask at the end
-	offset = 0;
-	price_cur = stoi(*(orderBook_split.end()-4-4*offset)); 
-	while (price_cur == 9999999999){
-		price_cur = stoi(*(orderBook_split.end()-4-4*(++offset)));
-		cache_lasta.clear();
-	}
-	vol_cur = stoi(*(orderBook_split.end()-3-4*offset));
-
-	cache = &cache_lasta;
-	if (price_cur > price_last_a){
-		int vol_diff;
-		bool br = false;
-		while (true){
-			if (cache->size() > cache_max_len){
-					vol_diff = - cache->front().second;
-					target_price = cache->front().first;
-					cache->erase(cache->begin());
-			}
-			else
-			{
-				if ((price_cur < cache->back().first) || (cache->size()==0)){
-					// expected price maybe still behind, add this unexpected new price
-					br = true;
-					vol_diff = vol_cur;
-					target_price = price_cur;
-				}else if (price_cur == cache->back().first){
-					// hit the expected price
-					br = true;
-					vol_diff = vol_cur - cache->back().second;
-					target_price = price_cur;
-					cache->pop_back();
-				}else{
-					// expected price is removed from the book already, remove it untill get a new reasonable expected price
-					vol_diff = - cache->back().second;
-					target_price = cache->back().first;
-					cache->pop_back();
-				}
-			}
-			
-			if (vol_diff != 0){
-				input_in.price = (price_t)((float)(target_price)/MULTI); input_in.size = (qty_t)(vol_diff); input_in.orderID = 1000;
-				bid = 0;
-				odop = (vol_diff<0)? CHANGE: NEW;
-				std::cout <<"Change on price level at the end: ";
-				std::cout<<" Symbol: " << cur_symbol <<" OrderID: "<<input_in.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< input_in.price <<" Volume: "<< input_in.size <<" Read: "<<req_read<<endl;
-				input_in.timestamp = tmstmp;
-				input_in.symbol = cur_symbol;
-				input_in.operation = odop;
-				input_in.side = bid;
-				stream_in.write(input_in);
-				order_book_system(
-					// data
-					stream_in,
-					price_stream_out,
-					// configuration inputs
-					cur_symbol,
-					read_max,
-					// control input
-					'v'  // void, run, halt, read book, clear, config symbol map | read_max 
-				);
-			}
-			if (br) break;
-		}
-	}
-	else if (price_cur < price_last_a) // price at the end overflow
-	{
-		cache->push_back( make_pair(price_last_a, vol_last_a));
-		std::cout << "Price orderflow: "<< price_last_a << std::endl;
-	}
-	price_last_a = price_cur;
-	vol_last_a = vol_cur;
-	
-}
