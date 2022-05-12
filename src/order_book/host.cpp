@@ -104,48 +104,42 @@ symbol_t *symbol_map=(symbol_t*)symbols;
 
 
 int main(int argc, char* argv[]) {
-	{ // device, context, command queue, binary file, program
-	const char* xclbinFilename;
-
-	if (argc==2) {
-		xclbinFilename = argv[1];
-		std::cout <<"Using FPGA binary file specfied through the command line: " << xclbinFilename << std::endl;
+    // ------------------------------------------------------------------------------------
+    // Step 1: Initialize the OpenCL environment
+    // ------------------------------------------------------------------------------------
+    cl_int err;
+    std::string binaryFile;
+    	if (argc==2) {
+		binaryFile = argv[1];
+		std::cout <<"Using FPGA binary file specfied through the command line: " << binaryFile << std::endl;
 	}
 	else {
-		xclbinFilename = "../order_book.xclbin";
-		std::cout << "No FPGA binary file specified through the command line, using:" << xclbinFilename <<std::endl;
+		binaryFile = "../order_book.xclbin";
+		std::cout << "No FPGA binary file specified through the command line, using:" << binaryFile <<std::endl;
 	}
+    unsigned fileBufSize;
+    std::vector<cl::Device> devices = get_xilinx_devices();
+    devices.resize(1);
+    cl::Device device = devices[0];
+    cl::Context context(device, NULL, NULL, NULL, &err);
+    char *fileBuf = read_binary_file(binaryFile, fileBufSize);
+    cl::Program::Binaries bins{{fileBuf, fileBufSize}};
+    cl::Program program(context, devices, bins, NULL, &err);
+    cl::CommandQueue q(context, device, CL_QUEUE_PROFILING_ENABLE, &err);
+    cl::Kernel krnl_vector_add(program, "vadd", &err);
+
 
     std::vector<cl::Device> devices = xcl::get_xil_devices();
-    cl::Device device = devices[0];
     devices.resize(1);
+    cl::Device device = devices[0];
+    
 
-	
-    // Creating Context and Command Queue for selected device
-    cl::Context context(device);
-    cl::CommandQueue q(context, device, CL_QUEUE_PROFILING_ENABLE);
-
-    // Load xclbin 
-    std::cout << "Loading: '" << xclbinFilename << "'\n";
-    std::ifstream bin_file(xclbinFilename, std::ifstream::binary);
-    bin_file.seekg (0, bin_file.end);
-    unsigned nb = bin_file.tellg();
-    bin_file.seekg (0, bin_file.beg);
-    char *buf = new char [nb];
-    bin_file.read(buf, nb);
-    
-    // Creating Program from Binary File
-    cl::Program::Binaries bins;
-    bins.push_back({buf,nb});
-    cl::Program program(context, devices, bins);
-    
-	}
-    
+    // ------------------------------------------------------------------------------------
+    // Step 2: Create buffers and initialize test values
+    // ------------------------------------------------------------------------------------
+  
     // This call will get the kernel object from program. A kernel is an 
     // OpenCL function that is executed on the FPGA. 
-    cl::Kernel krnl_vector_add(program,"order_book");
-	cl::Kernel krnl_const_add(program,"rtl_kernel_wizard_0");
-
     cl::Kernel krnl_order_book(program,"order_book");
 	 
 	// Data preparation -----------------------------
@@ -160,6 +154,10 @@ int main(int argc, char* argv[]) {
     // std::vector<int,aligned_allocator<int>> source_results(DATA_SIZE);
 
 	messageManager messages_handler;
+    symbol_t read_symbol;
+    ap_uint<8> read_max;
+    char instruction;
+
 
 	map<string, symbol_t> symbol2hex = {{"AAPL", 0x4141504c20202020},
                                         {"AMZN", 0x414d5a4e20202020},
@@ -177,8 +175,8 @@ int main(int argc, char* argv[]) {
     int WRITE_LENGTH = 1, READ_LENGTH = LEVEL_TEST+2;
     Message *host_write_ptr;
     price_depth *host_read_ptr; // = (int*) malloc(MAX_LENGTH*sizeof(int));
-    posix_memalign(&host_write_ptr, 4096, MAX_WRITE * sizeof(Message)); 
-    posix_memalign(&host_read_ptr, 4096, MAX_READ * sizeof(price_depth)); 
+    posix_memalign((void**)&host_write_ptr, 4096, MAX_WRITE * sizeof(Message)); 
+    posix_memalign((void**)&host_read_ptr, 4096, MAX_READ * sizeof(price_depth)); 
     vector<Message> stream_data;
     vector<price_depth> read_price;
 
@@ -194,18 +192,18 @@ int main(int argc, char* argv[]) {
 	// The .flag should be used to denote the kernel argument
 	// Create write stream for argument 0 of kernel
 	ext.flags = 0;
-	cl_stream h2k_stream = clCreateStream(device, XCL_STREAM_READ_ONLY, CL_STREAM, &ext, &ret);
+	cl_stream h2k_stream = clCreateStream(device, XCL_STREAM_READ_ONLY, CL_STREAM, &ext, &err);
 
 	// Create read stream for argument 1 of kernel
 	ext.flags = 1;
-	cl_stream k2h_stream = clCreateStream(device, XCL_STREAM_WRITE_ONLY, CL_STREAM, &ext,&ret);
+	cl_stream k2h_stream = clCreateStream(device, XCL_STREAM_WRITE_ONLY, CL_STREAM, &ext,&err);
 
 
 	// Set kernel non-stream argument (if any)
     std::cout << "Configure orderbook registers..." << std::endl;
-	symbol_t read_symbol = symbol2hex["AAPL"];
-	ap_uint<8> read_max = 10;
-	char instruction = 'A';
+	read_symbol = symbol2hex["AAPL"];
+	read_max = 10;
+	instruction = 'A';
     std::cout << "[Register] write - read_symbol = " << read_symbol << std::endl;
     std::cout << "[Register] write - read_max    = " << read_max << std::endl;
     std::cout << "[Register] write - instruction = " << instruction << std::endl;
@@ -216,7 +214,7 @@ int main(int argc, char* argv[]) {
 
     usleep(100);
     std::cout << "Start up orderbook system..." << std::endl;
-	char instruction = 'R';
+	instruction = 'R';
     std::cout << "[Register] write - instruction = " << instruction << std::endl;
 	clSetKernelArg(krnl_order_book, 4, sizeof(char), 		&instruction);
 	// // Schedule kernel enqueue
@@ -232,7 +230,7 @@ int main(int argc, char* argv[]) {
     // Aligning memory in 4K boundary
     // Fill the memory input 
     for(int i=0; i<WRITE_LENGTH; i++) {
-        host_mem_ptr[i] = stream_data[i]; 
+        host_write_ptr[i] = stream_data[i]; 
     }
 
 	// Initiating the WRITE transfer
@@ -241,13 +239,13 @@ int main(int argc, char* argv[]) {
 	wr_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
 	wr_req.priv_data = (void*)"orderwrite";
     int write_size = stream_data.size();
-	clWriteStream(h2k_stream, host_write_ptr, write_size, &wr_req , &ret);
+	clWriteStream(h2k_stream, host_write_ptr, write_size, &wr_req , &err);
 
 	// Checking the request completion, wait until finished
     std::cout << "Polling for completions of streaming.." << std::endl;
 	cl_streams_poll_req_completions poll_req[1] {0}; // 1 Requests
 	auto num_compl = 1;
-	clPollStreams(device, poll_req, 1, 1, &num_compl, 100000, &ret);
+	clPollStreams(device, poll_req, 1, 1, &num_compl, 100000, &err);
     std::cout << "Polling complete" << std::endl;
 	// Blocking API, waits for 2 poll request completion or 100'000ms, whichever occurs first
 
@@ -258,14 +256,13 @@ int main(int argc, char* argv[]) {
 	cl_stream_xfer_req rd_req {0};
 	rd_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
 	rd_req.priv_data = (void*)"bookread"; // You can think this as tagging the transfer with a name
-	int max_read_size = MAX_READ;
-    clReadStream(k2h_stream, host_read_ptr, max_read_size, &rd_req, &ret);
+    clReadStream(k2h_stream, host_read_ptr, MAX_READ, &rd_req, &err);
 
 	// Checking the request completion, wait until finished
     std::cout << "Polling for completions of streaming.." << std::endl;
 	cl_streams_poll_req_completions poll_req[1] {0}; // 1 Requests
-	auto num_compl = 1;
-	clPollStreams(device, poll_req, 2, 2, &num_compl, 100000, &ret);
+	num_compl = 1;
+	clPollStreams(device, poll_req, 2, 2, &num_compl, 100000, &err);
     std::cout << "Polling complete" << std::endl;
 
     bool match;
@@ -298,7 +295,7 @@ int main(int argc, char* argv[]) {
     // auto stream_data = messages_handler.generate_messages(WRITE_LENGTH);
     // if (stream_data.size() == WRITE_LENGTH){
     //     for(int i=0; i<WRITE_LENGTH; i++) {
-    //         host_mem_ptr[i] = stream_data[i]; 
+    //         host_write_ptr[i] = stream_data[i]; 
     //     }
     // }
 	// ----------------------------------
