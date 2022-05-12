@@ -11,6 +11,13 @@
 
 #include "common.hpp"
 #include "host_message.hpp"
+#include "ApiHandle.h"
+
+
+// Forward declaration of utility functions included at the end of this file
+std::vector<cl::Device> get_xilinx_devices();
+char *read_binary_file(const std::string &xclbin_file_name, unsigned &nb);
+
 
 static const std::string error_message =
     "Error: Result mismatch:\n"
@@ -43,59 +50,6 @@ struct aligned_allocator
       exit(EXIT_FAILURE);                                           \
     }                                       
 	
-namespace xcl {
-std::vector<cl::Device> get_devices(const std::string& vendor_name) {
-
-    size_t i;
-    cl_int err;
-    std::vector<cl::Platform> platforms;
-    OCL_CHECK(err, err = cl::Platform::get(&platforms));
-    cl::Platform platform;
-    for (i  = 0 ; i < platforms.size(); i++){
-        platform = platforms[i];
-        OCL_CHECK(err, std::string platformName = platform.getInfo<CL_PLATFORM_NAME>(&err));
-        if (platformName == vendor_name){
-            std::cout << "Found Platform" << std::endl;
-            std::cout << "Platform Name: " << platformName.c_str() << std::endl;
-            break;
-        }
-    }
-    if (i == platforms.size()) {
-        std::cout << "Error: Failed to find Xilinx platform" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-   
-    //Getting ACCELERATOR Devices and selecting 1st such device 
-    std::vector<cl::Device> devices;
-    OCL_CHECK(err, err = platform.getDevices(CL_DEVICE_TYPE_ACCELERATOR, &devices));
-    return devices;
-}
-   
-std::vector<cl::Device> get_xil_devices() {
-    return get_devices("Xilinx");
-}
-
-char* read_binary_file(const std::string &xclbin_file_name, unsigned &nb) 
-{
-    std::cout << "INFO: Reading " << xclbin_file_name << std::endl;
-
-	if(access(xclbin_file_name.c_str(), R_OK) != 0) {
-		printf("ERROR: %s xclbin not available please build\n", xclbin_file_name.c_str());
-		exit(EXIT_FAILURE);
-	}
-    //Loading XCL Bin into char buffer 
-    std::cout << "Loading: '" << xclbin_file_name.c_str() << "'\n";
-    std::ifstream bin_file(xclbin_file_name.c_str(), std::ifstream::binary);
-    bin_file.seekg (0, bin_file.end);
-    nb = bin_file.tellg();
-    bin_file.seekg (0, bin_file.beg);
-    char *buf = new char [nb];
-    bin_file.read(buf, nb);
-    return buf;
-}
-};
-
-
 char symbols[STOCK_TEST][8] =  {{' ',' ',' ',' ','L','P', 'A','A'},
 								{' ',' ',' ',' ', 'N','Z','M','A'},
 								{' ',' ',' ',' ', 'G','O','O','G'}};
@@ -107,7 +61,7 @@ int main(int argc, char* argv[]) {
     // ------------------------------------------------------------------------------------
     // Step 1: Initialize the OpenCL environment
     // ------------------------------------------------------------------------------------
-    cl_int err;
+
     std::string binaryFile;
     	if (argc==2) {
 		binaryFile = argv[1];
@@ -117,22 +71,9 @@ int main(int argc, char* argv[]) {
 		binaryFile = "../order_book.xclbin";
 		std::cout << "No FPGA binary file specified through the command line, using:" << binaryFile <<std::endl;
 	}
-    unsigned fileBufSize;
-    std::vector<cl::Device> devices = get_xilinx_devices();
-    devices.resize(1);
-    cl::Device device = devices[0];
-    cl::Context context(device, NULL, NULL, NULL, &err);
-    char *fileBuf = read_binary_file(binaryFile, fileBufSize);
-    cl::Program::Binaries bins{{fileBuf, fileBufSize}};
-    cl::Program program(context, devices, bins, NULL, &err);
-    cl::CommandQueue q(context, device, CL_QUEUE_PROFILING_ENABLE, &err);
-    cl::Kernel krnl_vector_add(program, "vadd", &err);
-
-
-    std::vector<cl::Device> devices = xcl::get_xil_devices();
-    devices.resize(1);
-    cl::Device device = devices[0];
-    
+    int MAX_WRITE = 1024, MAX_READ = 1024;
+    bool oooq=false;
+    StreamHandle s_handler(MAX_WRITE, MAX_READ, binaryFile, "order_book", oooq);
 
     // ------------------------------------------------------------------------------------
     // Step 2: Create buffers and initialize test values
@@ -140,8 +81,7 @@ int main(int argc, char* argv[]) {
   
     // This call will get the kernel object from program. A kernel is an 
     // OpenCL function that is executed on the FPGA. 
-    cl::Kernel krnl_order_book(program,"order_book");
-	 
+
 	// Data preparation -----------------------------
 
     // Compute the size of array in bytes
@@ -157,8 +97,6 @@ int main(int argc, char* argv[]) {
     symbol_t read_symbol;
     ap_uint<8> read_max;
     char instruction;
-
-
 	map<string, symbol_t> symbol2hex = {{"AAPL", 0x4141504c20202020},
                                         {"AMZN", 0x414d5a4e20202020},
                                         {"GOOG", 0x474f4f4720202020},
@@ -171,34 +109,14 @@ int main(int argc, char* argv[]) {
                                         {"QCOM", 0x51434f4d20202020}};
 
 
-    int MAX_WRITE = 1024, MAX_READ = 1024;
     int WRITE_LENGTH = 1, READ_LENGTH = LEVEL_TEST+2;
-    Message *host_write_ptr;
-    price_depth *host_read_ptr; // = (int*) malloc(MAX_LENGTH*sizeof(int));
-    posix_memalign((void**)&host_write_ptr, 4096, MAX_WRITE * sizeof(Message)); 
-    posix_memalign((void**)&host_read_ptr, 4096, MAX_READ * sizeof(price_depth)); 
     vector<Message> stream_data;
     vector<price_depth> read_price;
 
 
-	// streamming ------------------------------
+	// axilite configuring ------------------------------
 
-    std::cout << "Create streams" << std::endl;
-	// Device connection specification of the stream through extension pointer
-	cl_mem_ext_ptr_t  ext;  // Extension pointer
-	ext.param = krnl_order_book;     // The .param should be set to kernel (cl_kernel type)
-	ext.obj = nullptr;
-
-	// The .flag should be used to denote the kernel argument
-	// Create write stream for argument 0 of kernel
-	ext.flags = 0;
-	cl_stream h2k_stream = clCreateStream(device, XCL_STREAM_READ_ONLY, CL_STREAM, &ext, &err);
-
-	// Create read stream for argument 1 of kernel
-	ext.flags = 1;
-	cl_stream k2h_stream = clCreateStream(device, XCL_STREAM_WRITE_ONLY, CL_STREAM, &ext,&err);
-
-
+    cl_kernel krnl_order_book = s_handler.getKernel();
 	// Set kernel non-stream argument (if any)
     std::cout << "Configure orderbook registers..." << std::endl;
 	read_symbol = symbol2hex["AAPL"];
@@ -220,67 +138,20 @@ int main(int argc, char* argv[]) {
 	// // Schedule kernel enqueue
 	// clEnqueueTask(commands, kernel, . .. . );
 
-
+    // streaming ---------------------------------------
 
     std::cout << "Initiate orderbook contents" << std::endl;
 
     std::cout << "Prepare data..." << std::endl;
     stream_data = messages_handler.init_book_messsages();
-    WRITE_LENGTH = stream_data.size();
-    // Aligning memory in 4K boundary
-    // Fill the memory input 
-    for(int i=0; i<WRITE_LENGTH; i++) {
-        host_write_ptr[i] = stream_data[i]; 
-    }
 
-	// Initiating the WRITE transfer
-    std::cout << "Initiate write stream transfer" << std::endl;
-	cl_stream_xfer_req wr_req {0};
-	wr_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
-	wr_req.priv_data = (void*)"orderwrite";
-    int write_size = stream_data.size();
-	clWriteStream(h2k_stream, host_write_ptr, write_size, &wr_req , &err);
-
-	// Checking the request completion, wait until finished
-    std::cout << "Polling for completions of streaming.." << std::endl;
-	cl_streams_poll_req_completions poll_req[1] {0}; // 1 Requests
-	auto num_compl = 1;
-	clPollStreams(device, poll_req, 1, 1, &num_compl, 100000, &err);
-    std::cout << "Polling complete" << std::endl;
-	// Blocking API, waits for 2 poll request completion or 100'000ms, whichever occurs first
-
+    std::cout << "Stream initial orderbook levls to the kernel" <<std::endl;
+    s_handler.write(stream_data);
 
     usleep(1000);
-	// Initiate the READ transfer
-    std::cout << "Initiate read stream transfer" << std::endl;
-	cl_stream_xfer_req rd_req {0};
-	rd_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
-	rd_req.priv_data = (void*)"bookread"; // You can think this as tagging the transfer with a name
-    clReadStream(k2h_stream, host_read_ptr, MAX_READ, &rd_req, &err);
-
-	// Checking the request completion, wait until finished
-    std::cout << "Polling for completions of streaming.." << std::endl;
-	cl_streams_poll_req_completions poll_req[1] {0}; // 1 Requests
-	num_compl = 1;
-	clPollStreams(device, poll_req, 2, 2, &num_compl, 100000, &err);
-    std::cout << "Polling complete" << std::endl;
-
-    bool match;
-	for (auto i=0; i<1; ++i) {
-		if(rd_req.priv_data == poll_req[i].priv_data) { // Identifying the read transfer
-
-		    // Getting read size, data size from kernel is unknown
-            std::cout << "Orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
-		    ssize_t result_size=poll_req[i].nbytes;
-            int lvls = result_size/sizeof(price_depth);
-            read_price.clear();
-            for (int i=0; i< lvls; i++){
-                std::cout << "Price: " << host_read_ptr[i].price << " Size: " << host_read_ptr[i].size << std::endl;
-                read_price.push_back(host_read_ptr[i]);
-            }
-            match = messages_handler.check_resultbook(read_price, read_symbol);
-		}
-	}
+    std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
+    read_price = s_handler.read();
+    auto match = messages_handler.check_resultbook(read_price, read_symbol);
 
     return (match ? EXIT_FAILURE :  EXIT_SUCCESS);
 
@@ -349,3 +220,159 @@ int main(int argc, char* argv[]) {
 
 }
 
+
+// ------------------------------------------------------------------------------------
+// Utility functions
+// ------------------------------------------------------------------------------------
+std::vector<cl::Device> get_xilinx_devices()
+{
+    size_t i;
+    cl_int err;
+    std::vector<cl::Platform> platforms;
+    err = cl::Platform::get(&platforms);
+    cl::Platform platform;
+    for (i = 0; i < platforms.size(); i++)
+    {
+        platform = platforms[i];
+        std::string platformName = platform.getInfo<CL_PLATFORM_NAME>(&err);
+        if (platformName == "Xilinx")
+        {
+            std::cout << "INFO: Found Xilinx Platform" << std::endl;
+            break;
+        }
+    }
+    if (i == platforms.size())
+    {
+        std::cout << "ERROR: Failed to find Xilinx platform" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    //Getting ACCELERATOR Devices and selecting 1st such device
+    std::vector<cl::Device> devices;
+    err = platform.getDevices(CL_DEVICE_TYPE_ACCELERATOR, &devices);
+    return devices;
+}
+
+char *read_binary_file(const std::string &xclbin_file_name, unsigned &nb)
+{
+    if (access(xclbin_file_name.c_str(), R_OK) != 0)
+    {
+        printf("ERROR: %s xclbin not available please build\n", xclbin_file_name.c_str());
+        exit(EXIT_FAILURE);
+    }
+    //Loading XCL Bin into char buffer
+    std::cout << "INFO: Loading '" << xclbin_file_name << "'\n";
+    std::ifstream bin_file(xclbin_file_name.c_str(), std::ifstream::binary);
+    bin_file.seekg(0, bin_file.end);
+    nb = bin_file.tellg();
+    bin_file.seekg(0, bin_file.beg);
+    char *buf = new char[nb];
+    bin_file.read(buf, nb);
+    return buf;
+}
+
+class StreamHandle: public ApiHandle{
+    Message *host_write_ptr;
+    price_depth *host_read_ptr; 
+    int MAX_WRITE, MAX_READ;
+
+    public:
+    cl_stream h2k_stream;
+    cl_stream k2h_stream;
+
+    StreamHandle(int max_write, int max_read, char* binaryName, char* kernel_name, bool oooQueue): ApiHandle(binaryName, kernel_name, oooQueue){
+        MAX_WRITE = max_write, MAX_READ = max_read;
+        posix_memalign((void**)&host_write_ptr, 4096, MAX_WRITE * sizeof(Message)); 
+        posix_memalign((void**)&host_read_ptr, 4096, MAX_READ * sizeof(price_depth)); 
+        
+        // streamming ------------------------------
+
+        // Device connection specification of the stream through extension pointer
+        cl_mem_ext_ptr_t  ext;  // Extension pointer
+        ext.param = m_kernel;     // The .param should be set to kernel (cl_kernel type)
+        ext.obj = nullptr;
+
+        // The .flag should be used to denote the kernel argument
+        // Create write stream for argument 0 of kernel
+        std::cout << "Create host-kernel stream" << std::endl;
+        ext.flags = 0;
+        h2k_stream = clCreateStream(m_device_id, XCL_STREAM_READ_ONLY, CL_STREAM, &ext, &err);
+
+        // Create read stream for argument 1 of kernel
+        std::cout << "Create kernel-host stream" << std::endl;
+        ext.flags = 1;
+        k2h_stream = clCreateStream(m_device_id, XCL_STREAM_WRITE_ONLY, CL_STREAM, &ext,&err);
+
+    }
+
+    cl_streams_poll_req_completions wait(int reqN, int timeout_m){
+        cl_int err;
+        // Checking the request completion, wait until finished
+        std::cout << "Polling for completions of streaming.." << std::endl;
+        cl_streams_poll_req_completions poll_req[reqN] {0}; // 1 Requests
+        auto num_compl = reqN;
+        OCL_CHECK(err, clPollStreams(m_device_id, poll_req, reqN, reqN, &num_compl, timeout_m, &err));
+        std::cout << "Polling complete" << std::endl;
+        // Blocking API, waits for 2 poll request completion or 100'000ms, whichever occurs first
+        return poll_req;
+    }
+
+    void write_nb(vector<Message> data){
+        cl_int err;
+        int size = data.size();
+        if(size <= MAX_WRITE){
+            for (int i=0; i<size; i++){
+                host_write_ptr[i] = data[i];
+            }
+        }else{
+			std::cout << "FAILED TEST - Stream from host to kernel overflow max mem buffer" << std::endl;
+			exit(1);
+        }
+
+        // Initiating the WRITE transfer
+        std::cout << "Initiate write stream transfer" << std::endl;
+        cl_stream_xfer_req wr_req {0};
+        wr_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
+        wr_req.priv_data = (void*)"orderwrite";
+        OCL_CHECK(err, clWriteStream(h2k_stream, host_write_ptr, size, &wr_req , &err));
+
+    }
+
+    void write(vector<Message> data, int size){
+        write_nb(data, size);
+        wait(1, 100000);    // wait for 100000ms
+    }
+
+    cl_stream_xfer_req read_nb(){
+        cl_int err;
+	    // Initiate the READ transfer
+        std::cout << "Initiate read stream transfer" << std::endl;
+        cl_stream_xfer_req rd_req {0};
+        rd_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
+        rd_req.priv_data = (void*)"bookread"; // You can think this as tagging the transfer with a name
+        OCL_CHECK(err, clReadStream(k2h_stream, host_read_ptr, MAX_READ, &rd_req, &err));
+        return rd_req;
+    }
+
+    vector<price_depth> read(){
+        auto rd_req = read_nb();
+        auto poll_req = wait(1, 100000);
+        
+        for (auto i=0; i<1; ++i) {
+            if(rd_req.priv_data == poll_req[i].priv_data) { // Identifying the read transfer
+
+                // Getting read size, data size from kernel is unknown
+                std::cout << "Read stream data from the kernel" <<std::endl;
+                ssize_t result_size=poll_req[i].nbytes;
+                int lvls = result_size/sizeof(price_depth);
+                vector<price_depth> read_data;
+                for (int i=0; i< lvls; i++){
+                    read_data.push_back(host_read_ptr[i]);
+                }
+            }
+        }
+        return read_data;
+
+    }
+    
+}

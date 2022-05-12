@@ -165,7 +165,7 @@ bool messageManager::check_resultbook(
 		price_read = price_depth_table[0];
 		price_depth_table.erase(price_depth_table.begin());
 
-		std::cout << price_read.price << " " << price_read.size << std::endl;
+		std::cout <<"Price: " << price_read.price << " Size: " << price_read.size << std::endl;
 		if (price_read.price != 0){
 			cur_v.push_back(price_read);
 		}else {
