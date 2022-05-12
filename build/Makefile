@@ -1,6 +1,7 @@
 ndef = $(if $(value $(1)),,$(error $(1) must be set prior to running))
 
-XF_PROJ_ROOT ?= $(shell bash -c 'export MK_PATH=$(MK_PATH); echo $${MK_PATH%/Getting_Started/Vitis/example/src/*}')
+XF_PROJ_ROOT ?= /home/yzhengbv/00-data/git/hft-system
+#XF_PROJ_ROOT ?= $(shell bash -c 'export MK_PATH=$(MK_PATH); echo $${MK_PATH%/Getting_Started/Vitis/example/src/*}')
 
 TARGET := hw_emu
 PLATFORM := xilinx_zcu102_base_202020_1
@@ -32,6 +33,7 @@ $(BUILD_DIR)/app.exe:
 	cp run_$(TARGET).sh $(BUILD_DIR)
 	$(CXX) -Wall -g -std=c++11 $(SRCDIR)/host.cpp -o $(BUILD_DIR)/app.exe \
 		-I/usr/include/xrt \
+		-I/opt/xilinx/xrt/include \
 		-lOpenCL -lpthread -lrt -lstdc++
 
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
