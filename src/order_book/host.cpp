@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
     // Step 1: Initialize the OpenCL environment
     // ------------------------------------------------------------------------------------
 
-    std::string binaryFile;
+    char* binaryFile;
     	if (argc==2) {
 		binaryFile = argv[1];
 		std::cout <<"Using FPGA binary file specfied through the command line: " << binaryFile << std::endl;
@@ -121,7 +121,8 @@ int main(int argc, char* argv[]) {
 	}
     int MAX_WRITE = 1024, MAX_READ = 1024;
     bool oooq=false;
-    StreamHandle s_handler(MAX_WRITE, MAX_READ, binaryFile, "order_book", oooq);
+    char* kernel_name = "order_book";
+    StreamHandle s_handler(MAX_WRITE, MAX_READ, binaryFile, kernel_name, oooq);
 
     // ------------------------------------------------------------------------------------
     // Step 2: Create buffers and initialize test values

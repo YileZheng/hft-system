@@ -34,9 +34,11 @@ $(BUILD_DIR)/app.exe:
 	$(CXX) -Wall -g -std=c++11 $(SRCDIR)/host_message.cpp $(SRCDIR)/host.cpp -o $(BUILD_DIR)/app.exe \
 		-I$(XF_PROJ_ROOT)/include \
 		-I/usr/include/xrt \
-		-I/opt/xilinx/xrt/include \
+		-I$(SDKTARGETSYSROOT)/usr/include/xrt \
 		-I$(SRCDIR) \
-		-lOpenCL -lpthread -lrt -lstdc++
+        -L$(SDKTARGETSYSROOT)/lib \
+        -L$(SDKTARGETSYSROOT)/usr/lib \
+		-lOpenCL -lpthread -lrt -lstdc++ -lxilinxopencl -lxrt_core
 
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
 $(BUILD_DIR)/${KERNEL_NAME}.xo:
