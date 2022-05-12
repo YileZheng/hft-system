@@ -142,7 +142,7 @@ class ApiHandle {
 							NULL, &err);
 
 		std::cout << "Create Kernel: "<< kernel_name << std::endl;
-		m_kernel = clCreateKernel(m_program, kernel_name.c_str(), &err);
+		m_kernel = clCreateKernel(m_program, kernel_name, &err);
 		if (err != CL_SUCCESS) {
 			std::cout << "FAILED TEST - Kernel Creation" << std::endl;
 			exit(err);

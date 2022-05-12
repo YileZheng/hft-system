@@ -31,9 +31,11 @@ $(BUILD_DIR)/app.exe:
 	mkdir -p $(BUILD_DIR)
 	cp xrt.ini $(BUILD_DIR)
 	cp run_$(TARGET).sh $(BUILD_DIR)
-	$(CXX) -Wall -g -std=c++11 $(SRCDIR)/host.cpp -o $(BUILD_DIR)/app.exe \
+	$(CXX) -Wall -g -std=c++11 $(SRCDIR)/host_message.cpp $(SRCDIR)/host.cpp -o $(BUILD_DIR)/app.exe \
+		-I$(XF_PROJ_ROOT)/include \
 		-I/usr/include/xrt \
 		-I/opt/xilinx/xrt/include \
+		-I$(SRCDIR) \
 		-lOpenCL -lpthread -lrt -lstdc++
 
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
