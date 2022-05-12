@@ -11,8 +11,16 @@
 
 #include "common.hpp"
 #include "host_message.hpp"
-#include "ApiHandle.h"
 
+
+#define OCL_CHECK(error,call)                                       \
+    call;                                                           \
+    if (error != CL_SUCCESS) {                                      \
+      printf("%s:%d Error calling " #call ", error code is: %d\n",  \
+              __FILE__,__LINE__, error);                            \
+      exit(EXIT_FAILURE);                                           \
+    }                                       
+	
 
 // Forward declaration of utility functions included at the end of this file
 std::vector<cl::Device> get_xilinx_devices();
@@ -42,14 +50,54 @@ struct aligned_allocator
 };
 
 
-#define OCL_CHECK(error,call)                                       \
-    call;                                                           \
-    if (error != CL_SUCCESS) {                                      \
-      printf("%s:%d Error calling " #call ", error code is: %d\n",  \
-              __FILE__,__LINE__, error);                            \
-      exit(EXIT_FAILURE);                                           \
-    }                                       
-	
+class StreamHandle: public ApiHandle{
+    Message *host_write_ptr;
+    price_depth *host_read_ptr; 
+    int MAX_WRITE, MAX_READ;
+
+    public:
+    cl_stream h2k_stream;
+    cl_stream k2h_stream;
+
+    StreamHandle(int max_write, int max_read, char* binaryName, char* kernel_name, bool oooQueue): ApiHandle(binaryName, kernel_name, oooQueue){
+        MAX_WRITE = max_write, MAX_READ = max_read;
+        posix_memalign((void**)&host_write_ptr, 4096, MAX_WRITE * sizeof(Message)); 
+        posix_memalign((void**)&host_read_ptr, 4096, MAX_READ * sizeof(price_depth)); 
+        
+        // streamming ------------------------------
+
+        cl_int err;
+        // Device connection specification of the stream through extension pointer
+        cl_mem_ext_ptr_t  ext;  // Extension pointer
+        ext.param = m_kernel;     // The .param should be set to kernel (cl_kernel type)
+        ext.obj = nullptr;
+
+        // The .flag should be used to denote the kernel argument
+        // Create write stream for argument 0 of kernel
+        std::cout << "Create host-kernel stream" << std::endl;
+        ext.flags = 0;
+        h2k_stream = clCreateStream(m_device_id, XCL_STREAM_READ_ONLY, CL_STREAM, &ext, &err);
+
+        // Create read stream for argument 1 of kernel
+        std::cout << "Create kernel-host stream" << std::endl;
+        ext.flags = 1;
+        k2h_stream = clCreateStream(m_device_id, XCL_STREAM_WRITE_ONLY, CL_STREAM, &ext,&err);
+
+    }
+
+    cl_streams_poll_req_completions* wait(int reqN, int timeout_m);
+
+    void write_nb(vector<Message> data);
+
+    void write(vector<Message> data);
+
+    cl_stream_xfer_req read_nb();
+
+    vector<price_depth> read();
+    
+};
+
+
 char symbols[STOCK_TEST][8] =  {{' ',' ',' ',' ','L','P', 'A','A'},
 								{' ',' ',' ',' ', 'N','Z','M','A'},
 								{' ',' ',' ',' ', 'G','O','O','G'}};
@@ -269,4 +317,74 @@ char *read_binary_file(const std::string &xclbin_file_name, unsigned &nb)
     char *buf = new char[nb];
     bin_file.read(buf, nb);
     return buf;
+}
+
+
+cl_streams_poll_req_completions* StreamHandle::wait(int reqN, int timeout_m){
+    cl_int err;
+    // Checking the request completion, wait until finished
+    std::cout << "Polling for completions of streaming.." << std::endl;
+    cl_streams_poll_req_completions poll_req[reqN] {0}; // 1 Requests
+    auto num_compl = reqN;
+    OCL_CHECK(err, clPollStreams(m_device_id, poll_req, reqN, reqN, &num_compl, timeout_m, &err));
+    std::cout << "Polling complete" << std::endl;
+    // Blocking API, waits for 2 poll request completion or 100'000ms, whichever occurs first
+    return poll_req;
+}
+
+void StreamHandle::write_nb(vector<Message> data){
+    cl_int err;
+    int size = data.size();
+    if(size <= MAX_WRITE){
+        for (int i=0; i<size; i++){
+            host_write_ptr[i] = data[i];
+        }
+    }else{
+        std::cout << "FAILED TEST - Stream from host to kernel overflow max mem buffer" << std::endl;
+        exit(1);
+    }
+
+    // Initiating the WRITE transfer
+    std::cout << "Initiate write stream transfer" << std::endl;
+    cl_stream_xfer_req wr_req {0};
+    wr_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
+    wr_req.priv_data = (void*)"orderwrite";
+    OCL_CHECK(err, clWriteStream(h2k_stream, host_write_ptr, size, &wr_req , &err));
+
+}
+
+void StreamHandle::write(vector<Message> data){
+    write_nb(data);
+    wait(1, 100000);    // wait for 100000ms
+}
+
+cl_stream_xfer_req StreamHandle::read_nb(){
+    cl_int err;
+    // Initiate the READ transfer
+    std::cout << "Initiate read stream transfer" << std::endl;
+    cl_stream_xfer_req rd_req {0};
+    rd_req.flags = CL_STREAM_EOT | CL_STREAM_NONBLOCKING;
+    rd_req.priv_data = (void*)"bookread"; // You can think this as tagging the transfer with a name
+    OCL_CHECK(err, clReadStream(k2h_stream, host_read_ptr, MAX_READ, &rd_req, &err));
+    return rd_req;
+}
+
+vector<price_depth> StreamHandle::read(){
+    auto rd_req = read_nb();
+    auto poll_req = wait(1, 100000);
+    
+    vector<price_depth> read_data;
+    for (auto i=0; i<1; ++i) {
+        if(rd_req.priv_data == poll_req[i].priv_data) { // Identifying the read transfer
+
+            // Getting read size, data size from kernel is unknown
+            std::cout << "Read stream data from the kernel" <<std::endl;
+            ssize_t result_size=poll_req[i].nbytes;
+            int lvls = result_size/sizeof(price_depth);
+            for (int i=0; i< lvls; i++){
+                read_data.push_back(host_read_ptr[i]);
+            }
+        }
+    }
+    return read_data;
 }
