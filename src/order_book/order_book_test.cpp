@@ -40,8 +40,8 @@ void check_update_last_price(vector<string> orderBook_split, int price_lasta_ini
 class last_manager{
 	map<int, int> cache_last;
 	vector<pair<int, int>> cache_lasta, cache_lastb;
-	hls::stream<price_depth> price_stream_out;
-	hls::stream<Message> stream_in;
+	price_depth price_stream_out[100];
+	Message stream_in[10];
 	int cache_max_len = 10;
 
 	public:
@@ -110,8 +110,8 @@ int main()
 	int id=-1;
 	orderOp odop;
 	ap_uint<1> bid, req_read;
-	hls::stream<price_depth> price_stream_out;
-	hls::stream<Message> stream_in;
+	price_depth price_stream_out[100];
+	Message stream_in[10];
 	price_depth price_read;
 	Message input_in;
 
@@ -124,6 +124,7 @@ int main()
 		// configuration inputs
 		(symbol_t)0,
 		read_max,
+		1,
 		// control input
 		'A'  // void, run, halt, read book, clear, config symbol map | read_max 
 	);
@@ -136,6 +137,7 @@ int main()
 		// configuration inputs
 		(symbol_t)0,
 		read_max,
+		1,
 		// control input
 		'R'  // void, run, halt, read book, clear, config symbol map | read_max 
 	);
@@ -186,7 +188,8 @@ int main()
 				input_in.symbol = symbol_map[ii];
 				input_in.operation = odop;
 				input_in.side = bid;
-				stream_in.write(input_in);
+				// stream_in.write(input_in);
+				stream_in[0] = input_in;
 				order_book_system(
 					// data
 					stream_in,
@@ -194,6 +197,7 @@ int main()
 					// configuration inputs
 					symbol_map[ii],
 					read_max,
+					1,
 					// control input
 					'v'  // void, run, halt, read book, clear, config symbol map | read_max 
 				);
@@ -259,7 +263,8 @@ int main()
 				input_in.symbol = symbol_map[ii];
 				input_in.operation = odop;
 				input_in.side = bid;
-				stream_in.write(input_in);
+				// stream_in.write(input_in);
+				stream_in[0] = input_in;
 				order_book_system(
 					// data
 					stream_in,
@@ -267,6 +272,7 @@ int main()
 					// configuration inputs
 					symbol_map[ii],
 					read_max,
+					1,
 					// control input
 					instr  // void, run, halt, read book, clear, config symbol map | read_max 
 				);
@@ -274,21 +280,21 @@ int main()
 				elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000000;
 
 
-				vector<vector<price_depth>> resultbook;
-				vector<price_depth> cur_v;
-				while (!price_stream_out.empty()){
-//					std::cout << "Symbol: " << symbol_map[ii] << std::endl;
-					price_read = price_stream_out.read();
-					std::cout << price_read.price << " " << price_read.size << std::endl;
-					if (price_read.price != 0){
-						cur_v.push_back(price_read);
-					}else {
-						resultbook.push_back(cur_v);
-						cur_v.clear();
-					}
-				}
 
 				if (req_read==1){
+					vector<vector<price_depth>> resultbook;
+					vector<price_depth> cur_v;
+					for (int i=0; i<read_max+2; i++){
+	//					std::cout << "Symbol: " << symbol_map[ii] << std::endl;
+						price_read = price_stream_out[i];
+						std::cout << price_read.price << " " << price_read.size << std::endl;
+						if (price_read.price != 0){
+							cur_v.push_back(price_read);
+						}else {
+							resultbook.push_back(cur_v);
+							cur_v.clear();
+						}
+					}
 					string last_orderbook_line = last_orderbook_line_ls[ii];
 					stat[3].push_back(elapsed_ms);
 					string s = concat_string(resultbook, string(","), level);
@@ -462,7 +468,8 @@ void last_manager::check_update_last_price(
 				input_in.symbol = cur_symbol;
 				input_in.operation = odop;
 				input_in.side = bid;
-				stream_in.write(input_in);
+				// stream_in.write(input_in);
+				stream_in[0] = input_in;
 				order_book_system(
 					// data
 					stream_in,
@@ -470,6 +477,7 @@ void last_manager::check_update_last_price(
 					// configuration inputs
 					cur_symbol,
 					read_max,
+					1,
 					// control input
 					'v'  // void, run, halt, read book, clear, config symbol map | read_max 
 				);
@@ -536,7 +544,8 @@ void last_manager::check_update_last_price(
 				input_in.symbol = cur_symbol;
 				input_in.operation = odop;
 				input_in.side = bid;
-				stream_in.write(input_in);
+				// stream_in.write(input_in);
+				stream_in[0] = input_in;
 				order_book_system(
 					// data
 					stream_in,
@@ -544,6 +553,7 @@ void last_manager::check_update_last_price(
 					// configuration inputs
 					cur_symbol,
 					read_max,
+					1,
 					// control input
 					'v'  // void, run, halt, read book, clear, config symbol map | read_max 
 				);

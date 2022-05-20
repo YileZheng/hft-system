@@ -6,24 +6,26 @@
 
 void order_book_system(
 	// data
-	hls::stream<Message> &stream_in,
-	hls::stream<price_depth> &stream_out,
+	Message *stream_in,
+	price_depth *stream_out,
 
 	// configuration inputs
 	symbol_t axi_read_symbol,
 	ap_uint<8> axi_read_max,
+	int axi_size,
 
 	// control input
 	char axi_instruction  // void, run, halt, read book, clear, config symbol map | read_max 
 
 ){
 #pragma HLS TOP name=order_book_system
-#pragma HLS INTERFACE axis register_mode=both register port=stream_in
-#pragma HLS INTERFACE axis register_mode=both register port=stream_out
-#pragma HLS INTERFACE s_axilite port=axi_instruction bundle=BUS_A
-#pragma HLS INTERFACE s_axilite port=axi_read_symbol bundle=BUS_A
-#pragma HLS INTERFACE s_axilite port=axi_read_max bundle=BUS_A
-#pragma HLS INTERFACE ap_ctrl_none port=return 
+#pragma HLS INTERFACE ap_ctrl_chain port=return 
+#pragma HLS INTERFACE s_axilite port=axi_instruction bundle=control
+#pragma HLS INTERFACE s_axilite port=axi_read_symbol bundle=control
+#pragma HLS INTERFACE s_axilite port=axi_read_max bundle=control
+#pragma HLS INTERFACE s_axilite port=axi_size 	bundle=control
+#pragma HLS INTERFACE m_axi 	port=stream_in 	bundle=gmem0 depth=4096 offset=slave
+#pragma HLS INTERFACE m_axi 	port=stream_out bundle=gmem1 depth=4096 offset=slave
 
 	
 	static SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]={{AS_SLOTSIZE, AS_UNIT}};
@@ -93,8 +95,9 @@ void order_book_system(
 
 	// order symbol mapping
 	STREAM_IN_READ:
-	while (!stream_in.empty()){
-		message_in = stream_in.read();
+	for (int i=0; i<axi_size; i++){
+#pragma HLS DATAFLOW
+		message_in = stream_in[i];
 		ordermessage_in.order_info.orderID = message_in.orderID;
 		ordermessage_in.order_info.size = message_in.size;
 		ordermessage_in.order_info.price = message_in.price;
@@ -119,7 +122,7 @@ void order_book_system(
 	if (en_read){
 		READ_STREAM_BUFFER:
 		for (int i=0; i<(2*read_max)+2; i++){
-			stream_out.write(stream_out_buffer[index_read][i]);
+			stream_out[i] = stream_out_buffer[index_read][i];
 		}
 		en_read = 0;
 		read_req_concat = 0;

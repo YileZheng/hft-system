@@ -21,12 +21,13 @@ int symbol_mapping(
 
 void order_book_system(
 	// data
-	hls::stream<Message> &stream_in,
-	hls::stream<price_depth> &stream_out,
+	Message *stream_in,
+	price_depth *stream_out,
 
 	// configuration inputs
 	symbol_t axi_read_symbol,
 	ap_uint<8> axi_read_max,
+	int axi_size,
 
 	// control input
 	char axi_instruction  // void, run, halt, read book, clear, config symbol map | read_max 

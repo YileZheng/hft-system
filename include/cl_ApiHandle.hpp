@@ -10,7 +10,7 @@
 #include "CL/opencl.h"
 
 
-class ApiHandle {
+class cl_ApiHandle {
 	protected:
 	void* smalloc(size_t size) {
 		void* ptr;
@@ -66,7 +66,7 @@ class ApiHandle {
 	cl_context&       getContext(){ return m_context; }
 	cl_kernel&        getKernel() { return m_kernel; }
 
-	ApiHandle(char* binaryName, char* kernel_name, bool oooQueue) {
+	cl_ApiHandle(char* binaryName, char* kernel_name, bool oooQueue) {
 		// *********** OpenCL Host Code Setup **********
 
 		// Connect to first platform
@@ -170,7 +170,7 @@ class ApiHandle {
 		std::cout << "Setup Complete" << std::endl;
 	}
 
-	~ApiHandle() {
+	~cl_ApiHandle() {
 		clReleaseProgram(m_program);
 		clReleaseKernel(m_kernel);
 		clReleaseCommandQueue(m_queue);
