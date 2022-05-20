@@ -19,7 +19,7 @@ int symbol_mapping(
 );
 
 
-void order_book_system(
+void order_book(
 	// data
 	Message *stream_in,
 	price_depth *stream_out,
