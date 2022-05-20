@@ -19,7 +19,7 @@ int symbol_mapping(
 );
 
 
-void order_book_system(
+void order_book(
 	// data
 	hls::stream<Message> &stream_in,
 	hls::stream<price_depth> &stream_out,

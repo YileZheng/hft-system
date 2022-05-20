@@ -4,7 +4,7 @@
 
 //#define __DEBUG__
 
-void order_book_system(
+void order_book(
 	// data
 	hls::stream<Message> &stream_in,
 	hls::stream<price_depth> &stream_out,
@@ -17,7 +17,7 @@ void order_book_system(
 	char axi_instruction  // void, run, halt, read book, clear, config symbol map | read_max 
 
 ){
-#pragma HLS TOP name=order_book_system
+#pragma HLS TOP name=order_book
 #pragma HLS INTERFACE axis register_mode=both register port=stream_in
 #pragma HLS INTERFACE axis register_mode=both register port=stream_out
 #pragma HLS INTERFACE s_axilite port=axi_instruction bundle=BUS_A

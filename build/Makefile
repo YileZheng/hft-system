@@ -45,7 +45,6 @@ $(BUILD_DIR)/${KERNEL_NAME}.xo:
 	v++ -c -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg -k ${KERNEL_NAME} \
 		 -I$(SRCDIR) \
 		 $(SRCDIR)/${KERNEL_NAME}.cpp \
-		 $(SRCDIR)/suborder_book.cpp \
 		 $(SRCDIR)/utils.cpp \
 		 -o $(BUILD_DIR)/${KERNEL_NAME}.xo 
 
