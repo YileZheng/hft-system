@@ -47,19 +47,30 @@ $(BUILD_DIR)/app.exe:
 	mkdir -p $(BUILD_DIR)
 	cp xrt.ini $(BUILD_DIR)
 	cp run_$(TARGET).sh $(BUILD_DIR)
+<<<<<<< HEAD:build/order_book/Makefile
 	$(CXX) -Wall -g -std=c++11 $(HOST_SRC_CPP) -o $(BUILD_DIR)/app.exe \
 		$(HOST_INCLUDE_FLAG) \
         $(HOST_LIBRARY_FLAG) \
+=======
+	$(CXX) -Wall -g -std=c++11 $(SRCDIR)/host_message.cpp $(SRCDIR)/host.cpp -o $(BUILD_DIR)/app.exe \
+		-I$(XF_PROJ_ROOT)/include \
+		-I/usr/include/xrt \
+		-I$(SDKTARGETSYSROOT)/usr/include/xrt \
+		-I$(SDKTARGETSYSROOT)/usr/include \
+		-I$(SRCDIR) \
+        -L$(SDKTARGETSYSROOT)/lib \
+        -L$(SDKTARGETSYSROOT)/usr/lib \
+>>>>>>> 2c1cbbf5e9aea9292620d81cd3e78b73379bdefc:build/Makefile
 		-lOpenCL -lpthread -lrt -lstdc++ -lxilinxopencl -lxrt_core
 
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
 $(BUILD_DIR)/${KERNEL_NAME}.xo:
-	v++ -c -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg -k ${KERNEL_NAME} \
-		 -I$(SRCDIR) \
-		 $(SRCDIR)/${KERNEL_NAME}.cpp \
-		 $(SRCDIR)/suborder_book.cpp \
-		 $(SRCDIR)/utils.cpp \
-		 -o $(BUILD_DIR)/${KERNEL_NAME}.xo 
+	cp ../proj/order_book_hls/top_orderbook_system/order_book_system.xo $(BUILD_DIR)/${KERNEL_NAME}.xo
+#	v++ -c -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg -k ${KERNEL_NAME} \
+#		 -I$(SRCDIR) \
+#		 $(SRCDIR)/${KERNEL_NAME}.cpp \
+#		 $(SRCDIR)/utils.cpp \
+#		 -o $(BUILD_DIR)/${KERNEL_NAME}.xo 
 
 xclbin: $(BUILD_DIR)/${KERNEL_NAME}.xclbin
 $(BUILD_DIR)/${KERNEL_NAME}.xclbin: $(BUILD_DIR)/${KERNEL_NAME}.xo

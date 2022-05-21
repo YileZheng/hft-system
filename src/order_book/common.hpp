@@ -71,7 +71,7 @@ struct Message{
     orderID_t orderID;    /*Unique ID for each order*/
     orderOp operation;
     ap_uint<1> side;
-};
+} __attribute__((aligned(64)));
 
 struct transMessage{
     orderMessage ordermessage;

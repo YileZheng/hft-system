@@ -4,7 +4,7 @@
 
 //#define __DEBUG__
 
-void order_book_system(
+void order_book(
 	// data
 	Message *stream_in,
 	price_depth *stream_out,
@@ -18,14 +18,16 @@ void order_book_system(
 	char axi_instruction  // void, run, halt, read book, clear, config symbol map | read_max 
 
 ){
-#pragma HLS TOP name=order_book_system
-#pragma HLS INTERFACE ap_ctrl_chain port=return 
+#pragma HLS INTERFACE m_axi depth=4096 bundle=gmem port=stream_out offset=slave
+#pragma HLS INTERFACE m_axi depth=4096 bundle=gmem port=stream_in offset=slave
+
+#pragma HLS INTERFACE s_axilite bundle=control port=return
 #pragma HLS INTERFACE s_axilite port=axi_instruction bundle=control
 #pragma HLS INTERFACE s_axilite port=axi_read_symbol bundle=control
 #pragma HLS INTERFACE s_axilite port=axi_read_max bundle=control
 #pragma HLS INTERFACE s_axilite port=axi_size 	bundle=control
-#pragma HLS INTERFACE m_axi 	port=stream_in 	bundle=gmem0 depth=4096 offset=slave
-#pragma HLS INTERFACE m_axi 	port=stream_out bundle=gmem1 depth=4096 offset=slave
+#pragma HLS INTERFACE s_axilite port=stream_in 	bundle=control
+#pragma HLS INTERFACE s_axilite port=stream_out bundle=control
 
 	
 	static SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]={{AS_SLOTSIZE, AS_UNIT}};
@@ -96,7 +98,6 @@ void order_book_system(
 	// order symbol mapping
 	STREAM_IN_READ:
 	for (int i=0; i<axi_size; i++){
-#pragma HLS DATAFLOW
 		message_in = stream_in[i];
 		ordermessage_in.order_info.orderID = message_in.orderID;
 		ordermessage_in.order_info.size = message_in.size;
