@@ -32,12 +32,12 @@ class KernelHandle: public clApiHandle{
 		buf_in = cl::Buffer(m_context,
 							static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR),
 							MAX_WRITE * sizeof(Message),
-							buf_in,
+							host_write_ptr,
 							NULL);
 		buf_out = cl::Buffer(m_context,
 							static_cast<cl_mem_flags>(CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR),
 							MAX_READ * sizeof(price_depth),
-							buf_out,
+							host_read_ptr,
 							NULL);
 		et.finish();
 
