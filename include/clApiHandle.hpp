@@ -36,4 +36,4 @@ class clApiHandle{
 		m_kernel = cl::Kernel(program, kernel_name);
 		std::cout << "INFO: Kernel has been created" << std::endl;
 	}
-}
+};
