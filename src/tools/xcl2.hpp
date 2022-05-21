@@ -68,6 +68,17 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // the
 // page boundary. It will ensure that user buffer will be used when user create
 // Buffer/Mem Object with CL_MEM_USE_HOST_PTR.
+
+// Memory alignment
+template <typename T>
+T* aligned_alloc(std::size_t num) {
+    void* ptr = nullptr;
+    if (posix_memalign(&ptr, 4096, num * sizeof(T))) {
+        throw std::bad_alloc();
+    }
+    return reinterpret_cast<T*>(ptr);
+}
+
 template <typename T> struct aligned_allocator {
   using value_type = T;
 

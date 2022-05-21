@@ -1,6 +1,6 @@
-#define __gmp_const const
-#include <gmp.h>
-#include <mpfr.h>
+// #define __gmp_const const
+// #include <gmp.h>
+// #include <mpfr.h>
 #include "common.hpp"
 #include "utils.hpp"
 

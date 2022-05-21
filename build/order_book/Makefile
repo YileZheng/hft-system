@@ -6,12 +6,28 @@ XF_PROJ_ROOT ?= /home/yzhengbv/00-data/git/hft-system
 TARGET := hw_emu
 PLATFORM := xilinx_zcu102_base_202020_1
 SRCDIR := $(XF_PROJ_ROOT)/src/order_book
+SRCDIR_TOOL := $(XF_PROJ_ROOT)/src/tools
 BUILD_DIR := $(TARGET)
 EMBEDDED_EXEC_SCRIPT := run_$(TARGET).sh
 # EMBEDDED_PACKAGE_OUT := $(BUILD_DIR)package/sd_card.img
 SDKTARGETSYSROOT := $(SYSROOT)
 ROOTFS ?= $(EDGE_COMMON_SW)
 KERNEL_NAME := order_book
+
+HOST_SRC_CPP := $(SRCDIR)/host.cpp
+HOST_SRC_CPP += $(SRCDIR)/host_message.cpp
+# HOST_SRC_CPP += $(SRCDIR)/host_kernel_handle_cl.cpp
+HOST_SRC_CPP += $(SRCDIR_TOOL)/event_timer.cpp
+HOST_SRC_CPP += $(SRCDIR_TOOL)/xcl2.cpp
+
+HOST_INCLUDE_PATH_FLAG := -I$(SRCDIR)
+HOST_INCLUDE_PATH_FLAG += -I$(SRCDIR_TOOL)
+HOST_INCLUDE_PATH_FLAG += -I$(SDKTARGETSYSROOT)/usr/include/xrt
+HOST_INCLUDE_PATH_FLAG += -I$(XF_PROJ_ROOT)/include
+HOST_INCLUDE_PATH_FLAG += -I/usr/include/xrt
+
+HOST_LIBRARY_PATH_FLAG := -L$(SDKTARGETSYSROOT)/lib
+HOST_LIBRARY_PATH_FLAG += -L$(SDKTARGETSYSROOT)/usr/lib
 
 run: build
 ifeq ($(TARGET),hw)
@@ -31,13 +47,9 @@ $(BUILD_DIR)/app.exe:
 	mkdir -p $(BUILD_DIR)
 	cp xrt.ini $(BUILD_DIR)
 	cp run_$(TARGET).sh $(BUILD_DIR)
-	$(CXX) -Wall -g -std=c++11 $(SRCDIR)/host_message.cpp $(SRCDIR)/host.cpp -o $(BUILD_DIR)/app.exe \
-		-I$(XF_PROJ_ROOT)/include \
-		-I/usr/include/xrt \
-		-I$(SDKTARGETSYSROOT)/usr/include/xrt \
-		-I$(SRCDIR) \
-        -L$(SDKTARGETSYSROOT)/lib \
-        -L$(SDKTARGETSYSROOT)/usr/lib \
+	$(CXX) -Wall -g -std=c++11 $(HOST_SRC_CPP) -o $(BUILD_DIR)/app.exe \
+		$(HOST_INCLUDE_FLAG) \
+        $(HOST_LIBRARY_FLAG) \
 		-lOpenCL -lpthread -lrt -lstdc++ -lxilinxopencl -lxrt_core
 
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
