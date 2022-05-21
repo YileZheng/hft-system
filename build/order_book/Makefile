@@ -46,10 +46,8 @@ $(BUILD_DIR)/app.exe:
 	$(call ndef,SDKTARGETSYSROOT)
 	mkdir -p $(BUILD_DIR)
 	cp xrt.ini $(BUILD_DIR)
-	cp run_$(TARGET).sh $(BUILD_DIR)
-	$(CXX) -Wall -g -std=c++11 $(HOST_SRC_CPP) -o $(BUILD_DIR)/app.exe \
-		$(HOST_INCLUDE_FLAG) \
-        $(HOST_LIBRARY_FLAG) \
+	cp run_$(TARGET).sh $(BUILD_DIR) 
+	$(CXX) -Wall -g -std=c++11 $(HOST_SRC_CPP) -o $(BUILD_DIR)/app.exe $(HOST_INCLUDE_PATH_FLAG) $(HOST_LIBRARY_PATH_FLAG) \
 		-lOpenCL -lpthread -lrt -lstdc++ -lxilinxopencl -lxrt_core
 
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo

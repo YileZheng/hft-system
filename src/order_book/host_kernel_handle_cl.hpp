@@ -84,7 +84,18 @@ class KernelHandle: public clApiHandle{
     double boot_orderbook();
     double read_orderbook(vector<price_depth> data_out, symbol_t axi_read_symbol);
     double new_orders(vector<Message> data_in);
-    double run(Message *data_in, price_depth *data_out, symbol_t axi_read_symbol, ap_uint<8> axi_read_max, int axi_size, char axi_instruction );
+    double run(
+	    // data
+	    vector<Message> data_in,
+	    vector<price_depth> data_out,
+
+	    // configuration inputs
+	    symbol_t axi_read_symbol,
+	    ap_uint<8> axi_read_max,
+
+	    // control input
+	    char axi_instruction  
+    );
 
 }
 
@@ -179,7 +190,7 @@ double KernelHandle::read_orderbook(
 
 	// Migrate memory back from device
 	et.add("Read back computation results");
-	q.enqueueMigrateMemObjects({buf_out}, CL_MIGRATE_MEM_OBJECT_HOST, NULL, &event_sp);
+	m_queue.enqueueMigrateMemObjects({buf_out}, CL_MIGRATE_MEM_OBJECT_HOST, NULL, &event_sp);
 	clWaitForEvents(1, (const cl_event *)&event_sp);
 	et.finish();
 	
@@ -278,7 +289,7 @@ double KernelHandle::run(
 	// Migrate memory back from device
 	if (axi_instruction == 'r'){
 		et.add("Read back computation results");
-		q.enqueueMigrateMemObjects({buf_out}, CL_MIGRATE_MEM_OBJECT_HOST, NULL, &event_sp);
+		m_queue.enqueueMigrateMemObjects({buf_out}, CL_MIGRATE_MEM_OBJECT_HOST, NULL, &event_sp);
 		clWaitForEvents(1, (const cl_event *)&event_sp);
 		et.finish();
 		
