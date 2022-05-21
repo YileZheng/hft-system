@@ -6,7 +6,6 @@
 #include<vector>
 #include<map>
 #include "common.hpp"
-#include "ApiHandle.h"
 
 #define STOCK_TEST 3
 #define LEVEL_TEST 10

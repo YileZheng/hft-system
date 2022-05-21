@@ -1,8 +1,9 @@
-#include <xrt/xrt_device.h>
-#include <xrt/xrt_kernel.h>
-#include <xrt/xrt_bo.h>
+#include <xrt/experimental/xrt_device.h>
+#include <xrt/experimental/xrt_kernel.h>
+#include <xrt/experimental/xrt_bo.h>
 
 class xrtApiHandle{
+    protected:
 	
 	const char*    STR_ERROR   = "ERROR:   ";
 	const char*    STR_FAILED  = "FAILED:  ";

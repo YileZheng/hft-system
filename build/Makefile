@@ -35,6 +35,7 @@ $(BUILD_DIR)/app.exe:
 		-I$(XF_PROJ_ROOT)/include \
 		-I/usr/include/xrt \
 		-I$(SDKTARGETSYSROOT)/usr/include/xrt \
+		-I$(SDKTARGETSYSROOT)/usr/include \
 		-I$(SRCDIR) \
         -L$(SDKTARGETSYSROOT)/lib \
         -L$(SDKTARGETSYSROOT)/usr/lib \
@@ -42,11 +43,12 @@ $(BUILD_DIR)/app.exe:
 
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
 $(BUILD_DIR)/${KERNEL_NAME}.xo:
-	v++ -c -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg -k ${KERNEL_NAME} \
-		 -I$(SRCDIR) \
-		 $(SRCDIR)/${KERNEL_NAME}.cpp \
-		 $(SRCDIR)/utils.cpp \
-		 -o $(BUILD_DIR)/${KERNEL_NAME}.xo 
+	cp ../proj/order_book_hls/top_orderbook_system/order_book_system.xo $(BUILD_DIR)/${KERNEL_NAME}.xo
+#	v++ -c -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg -k ${KERNEL_NAME} \
+#		 -I$(SRCDIR) \
+#		 $(SRCDIR)/${KERNEL_NAME}.cpp \
+#		 $(SRCDIR)/utils.cpp \
+#		 -o $(BUILD_DIR)/${KERNEL_NAME}.xo 
 
 xclbin: $(BUILD_DIR)/${KERNEL_NAME}.xclbin
 $(BUILD_DIR)/${KERNEL_NAME}.xclbin: $(BUILD_DIR)/${KERNEL_NAME}.xo

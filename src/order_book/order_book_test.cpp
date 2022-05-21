@@ -117,7 +117,7 @@ int main()
 
 
 	// initiate orderbook system
-	order_book_system(
+	order_book(
 		// data
 		stream_in,
 		price_stream_out,
@@ -130,7 +130,7 @@ int main()
 	);
 
 	// boot the kernel
-	order_book_system(
+	order_book(
 		// data
 		stream_in,
 		price_stream_out,
@@ -190,7 +190,7 @@ int main()
 				input_in.side = bid;
 				// stream_in.write(input_in);
 				stream_in[0] = input_in;
-				order_book_system(
+				order_book(
 					// data
 					stream_in,
 					price_stream_out,
@@ -265,7 +265,7 @@ int main()
 				input_in.side = bid;
 				// stream_in.write(input_in);
 				stream_in[0] = input_in;
-				order_book_system(
+				order_book(
 					// data
 					stream_in,
 					price_stream_out,
@@ -284,15 +284,19 @@ int main()
 				if (req_read==1){
 					vector<vector<price_depth>> resultbook;
 					vector<price_depth> cur_v;
-					for (int i=0; i<read_max+2; i++){
+					bool br=true;
+					int i=0;
+					while (true){
 	//					std::cout << "Symbol: " << symbol_map[ii] << std::endl;
-						price_read = price_stream_out[i];
+						price_read = price_stream_out[i++];
 						std::cout << price_read.price << " " << price_read.size << std::endl;
 						if (price_read.price != 0){
 							cur_v.push_back(price_read);
 						}else {
+							br = !br;
 							resultbook.push_back(cur_v);
 							cur_v.clear();
+							if (br) break;
 						}
 					}
 					string last_orderbook_line = last_orderbook_line_ls[ii];
@@ -470,7 +474,7 @@ void last_manager::check_update_last_price(
 				input_in.side = bid;
 				// stream_in.write(input_in);
 				stream_in[0] = input_in;
-				order_book_system(
+				order_book(
 					// data
 					stream_in,
 					price_stream_out,
@@ -546,7 +550,7 @@ void last_manager::check_update_last_price(
 				input_in.side = bid;
 				// stream_in.write(input_in);
 				stream_in[0] = input_in;
-				order_book_system(
+				order_book(
 					// data
 					stream_in,
 					price_stream_out,
