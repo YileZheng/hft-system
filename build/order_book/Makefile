@@ -47,20 +47,9 @@ $(BUILD_DIR)/app.exe:
 	mkdir -p $(BUILD_DIR)
 	cp xrt.ini $(BUILD_DIR)
 	cp run_$(TARGET).sh $(BUILD_DIR)
-<<<<<<< HEAD:build/order_book/Makefile
 	$(CXX) -Wall -g -std=c++11 $(HOST_SRC_CPP) -o $(BUILD_DIR)/app.exe \
 		$(HOST_INCLUDE_FLAG) \
         $(HOST_LIBRARY_FLAG) \
-=======
-	$(CXX) -Wall -g -std=c++11 $(SRCDIR)/host_message.cpp $(SRCDIR)/host.cpp -o $(BUILD_DIR)/app.exe \
-		-I$(XF_PROJ_ROOT)/include \
-		-I/usr/include/xrt \
-		-I$(SDKTARGETSYSROOT)/usr/include/xrt \
-		-I$(SDKTARGETSYSROOT)/usr/include \
-		-I$(SRCDIR) \
-        -L$(SDKTARGETSYSROOT)/lib \
-        -L$(SDKTARGETSYSROOT)/usr/lib \
->>>>>>> 2c1cbbf5e9aea9292620d81cd3e78b73379bdefc:build/Makefile
 		-lOpenCL -lpthread -lrt -lstdc++ -lxilinxopencl -lxrt_core
 
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
