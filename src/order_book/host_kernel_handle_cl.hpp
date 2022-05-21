@@ -29,12 +29,12 @@ class KernelHandle: public clApiHandle{
 		// Map our user-allocated buffers as OpenCL buffers using a shared
 		// host pointer
 		et.add("Map host buffers to OpenCL buffers");
-		cl::Buffer buf_in(m_context,
+		buf_in = cl::Buffer(m_context,
 							static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR),
 							MAX_WRITE * sizeof(Message),
 							buf_in,
 							NULL);
-		cl::Buffer buf_out(m_context,
+		buf_out = cl::Buffer(m_context,
 							static_cast<cl_mem_flags>(CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR),
 							MAX_READ * sizeof(price_depth),
 							buf_out,
