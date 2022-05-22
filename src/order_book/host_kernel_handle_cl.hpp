@@ -97,7 +97,7 @@ class KernelHandle: public clApiHandle{
 	    char axi_instruction  
     );
 
-}
+};
 
 
 
