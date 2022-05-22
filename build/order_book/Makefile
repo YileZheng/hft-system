@@ -53,7 +53,7 @@ $(BUILD_DIR)/app.exe:
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
 $(BUILD_DIR)/${KERNEL_NAME}.xo:
 	cp ../proj/order_book_hls/top_orderbook_system/order_book_system.xo $(BUILD_DIR)/${KERNEL_NAME}.xo
-#	v++ -c -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg -k ${KERNEL_NAME} \
+#	v++ -c -t ${TARGET} --platform $(PLATFORM) -k ${KERNEL_NAME} \
 #		 -I$(SRCDIR) \
 #		 $(SRCDIR)/${KERNEL_NAME}.cpp \
 #		 $(SRCDIR)/utils.cpp \
@@ -61,12 +61,12 @@ $(BUILD_DIR)/${KERNEL_NAME}.xo:
 
 xclbin: $(BUILD_DIR)/${KERNEL_NAME}.xclbin
 $(BUILD_DIR)/${KERNEL_NAME}.xclbin: $(BUILD_DIR)/${KERNEL_NAME}.xo
-	v++ -l -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg $(BUILD_DIR)/${KERNEL_NAME}.xo -o $(BUILD_DIR)/${KERNEL_NAME}.xclbin
+	v++ -l -t ${TARGET} --platform $(PLATFORM) --config ./connectivity.cfg $(BUILD_DIR)/${KERNEL_NAME}.xo -o $(BUILD_DIR)/${KERNEL_NAME}.xclbin
 
 package: $(BUILD_DIR)/package/sd_card.img
 $(BUILD_DIR)/package/sd_card.img: $(BUILD_DIR)/app.exe $(BUILD_DIR)/${KERNEL_NAME}.xclbin
 	$(call ndef,ROOTFS)
-	cd $(BUILD_DIR) && v++ -p -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg ./${KERNEL_NAME}.xclbin \
+	cd $(BUILD_DIR) && v++ -p -t ${TARGET} --platform $(PLATFORM) --config ../zcu102.cfg ./${KERNEL_NAME}.xclbin \
 		--package.out_dir ./package \
 		--package.rootfs ${ROOTFS}/rootfs.ext4 \
 		--package.sd_file ./${KERNEL_NAME}.xclbin \
