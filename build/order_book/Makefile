@@ -52,8 +52,13 @@ $(BUILD_DIR)/app.exe:
 
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
 $(BUILD_DIR)/${KERNEL_NAME}.xo:
+<<<<<<< HEAD
 	cp ../proj/order_book_hls/top_orderbook_system/order_book_system.xo $(BUILD_DIR)/${KERNEL_NAME}.xo
 #	v++ -c -t ${TARGET} --platform $(PLATFORM) -k ${KERNEL_NAME} \
+=======
+	cp $(XF_PROJ_ROOT)/proj/order_book_hls/top_orderbook_system/order_book_system.xo $(BUILD_DIR)/${KERNEL_NAME}.xo
+#	v++ -c -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg -k ${KERNEL_NAME} \
+>>>>>>> d3bcb6a0d975da560156e416900f041a555e512c
 #		 -I$(SRCDIR) \
 #		 $(SRCDIR)/${KERNEL_NAME}.cpp \
 #		 $(SRCDIR)/utils.cpp \
