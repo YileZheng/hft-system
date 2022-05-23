@@ -37,12 +37,12 @@ std::vector<cl::Device> get_devices(const std::string& vendor_name) {
     size_t i;
     std::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
-    std::cout << "Got platforms" << platforms.size() << sd::endl;
+    std::cout << "Got platforms" << platforms.size() << std::endl;
     cl::Platform platform;
     for (i  = 0 ; i < platforms.size(); i++){
         platform = platforms[i];
         std::string platformName  = platform.getInfo<CL_PLATFORM_NAME>();
-        std::cout << "Platform " << i << " name: " << platformName << sd::endl;
+        std::cout << "Platform " << i << " name: " << platformName << std::endl;
         // std::cout << "Platform Name: " << platformName.c_str() << std::endl
         //     << "Vendor Name : " << vendor_name.c_str() 
         //     << std::endl;
@@ -59,7 +59,7 @@ std::vector<cl::Device> get_devices(const std::string& vendor_name) {
     //Getting ACCELERATOR Devices and selecting 1st such device 
     std::vector<cl::Device> devices;
     platform.getDevices(CL_DEVICE_TYPE_ACCELERATOR, &devices);
-    std::cout << "Got devices from this platform" << sd::endl;
+    std::cout << "Got devices from this platform" << std::endl;
     return devices;
 }
    
