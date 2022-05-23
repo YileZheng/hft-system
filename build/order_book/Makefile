@@ -29,6 +29,11 @@ HOST_INCLUDE_PATH_FLAG += -I/usr/include/xrt
 HOST_LIBRARY_PATH_FLAG := -L$(SDKTARGETSYSROOT)/lib
 HOST_LIBRARY_PATH_FLAG += -L$(SDKTARGETSYSROOT)/usr/lib
 
+KERNEL_INCLUDE_PATH_FLAG := -I$(SRCDIR)
+
+KERNEL_SRC_CPP :=  $(SRCDIR)/order_book.cpp
+KERNEL_SRC_CPP +=  $(SRCDIR)/utils.cpp
+
 run: build
 ifeq ($(TARGET),hw)
 	#cd $(BUILD_DIR) && ./app.exe
@@ -54,9 +59,8 @@ xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
 $(BUILD_DIR)/${KERNEL_NAME}.xo:
 	cp $(XF_PROJ_ROOT)/proj/order_book_hls/top_orderbook_system/order_book_system.xo $(BUILD_DIR)/${KERNEL_NAME}.xo
 #	v++ -c -t ${TARGET} --platform $(PLATFORM) -k ${KERNEL_NAME} \
-#		 -I$(SRCDIR) \
-#		 $(SRCDIR)/${KERNEL_NAME}.cpp \
-#		 $(SRCDIR)/utils.cpp \
+#		 $(KERNEL_INCLUDE_PATH_FLAG) \
+#		 $(KERNEL_SRC_CPP) \
 #		 -o $(BUILD_DIR)/${KERNEL_NAME}.xo 
 
 xclbin: $(BUILD_DIR)/${KERNEL_NAME}.xclbin

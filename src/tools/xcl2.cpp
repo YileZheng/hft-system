@@ -31,16 +31,18 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <limits.h>
 #include <sys/stat.h>
 #include "xcl2.hpp"
-namespace xcl {
+namespace m_tools {
 std::vector<cl::Device> get_devices(const std::string& vendor_name) {
 
     size_t i;
     std::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
+    std::cout << "Got platforms" << platforms.size() << sd::endl;
     cl::Platform platform;
     for (i  = 0 ; i < platforms.size(); i++){
         platform = platforms[i];
         std::string platformName  = platform.getInfo<CL_PLATFORM_NAME>();
+        std::cout << "Platform " << i << " name: " << platformName << sd::endl;
         // std::cout << "Platform Name: " << platformName.c_str() << std::endl
         //     << "Vendor Name : " << vendor_name.c_str() 
         //     << std::endl;
@@ -57,6 +59,7 @@ std::vector<cl::Device> get_devices(const std::string& vendor_name) {
     //Getting ACCELERATOR Devices and selecting 1st such device 
     std::vector<cl::Device> devices;
     platform.getDevices(CL_DEVICE_TYPE_ACCELERATOR, &devices);
+    std::cout << "Got devices from this platform" << sd::endl;
     return devices;
 }
    

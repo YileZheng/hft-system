@@ -65,7 +65,7 @@ struct aligned_allocator
   }
 };
 
-namespace xcl {
+namespace m_tools {
 std::vector<cl::Device> get_xil_devices();
 std::vector<cl::Device> get_devices(const std::string& vendor_name);
 /* find_xclbin_file

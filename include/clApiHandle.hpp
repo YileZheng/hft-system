@@ -28,7 +28,7 @@ class clApiHandle{
 			
 		// Platform related operations
 		std::cout << STR_INFO << "Constructing cl API Handler..." << std::endl;
-		std::vector<cl::Device> devices = xcl::get_xil_devices();
+		std::vector<cl::Device> devices = m_tools::get_xil_devices();
 		std::cout << STR_INFO << "Got devices" << std::endl;
 		m_device = devices[0];
 
@@ -40,7 +40,7 @@ class clApiHandle{
 		std::string devName = m_device.getInfo<CL_DEVICE_NAME>();
 		printf("INFO: Found Device=%s\n", devName.c_str());
 
-		cl::Program::Binaries xclBins = xcl::import_binary_file(xclbin_path);
+		cl::Program::Binaries xclBins = m_tools::import_binary_file(xclbin_path);
 		std::cout << STR_INFO << "Read hardware binary" << std::endl;
 		devices.resize(1);
 		cl::Program program(m_context, devices, xclBins);
