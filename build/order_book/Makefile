@@ -40,7 +40,7 @@ ifeq ($(TARGET),hw)
 	echo "Copy the contents of the sd_card folder to an SD card, and run './app.exe' on the target platform."
 else
 	# cd $(BUILD_DIR) && XCL_EMULATION_MODE=$(TARGET) ./app.exe
-	cd $(BUILD_DIR)/package && launch_$(TARGET).sh -no-reboot -run-app $(EMBEDDED_EXEC_SCRIPT)
+	cd $(BUILD_DIR)/package && ./launch_$(TARGET).sh -no-reboot -run-app $(EMBEDDED_EXEC_SCRIPT)
 endif
 
 #build: host emconfig xclbin
