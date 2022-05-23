@@ -30,4 +30,4 @@ class xrtApiHandle{
 		my_kernel = xrt::kernel(my_device, xclbin_uuid, kernelName);
 		std::cout << STR_PASSED << "auto my_kernel = xrt::kernel(my_device, xclbin_uuid, \"" << kernelName << "\")" << std::endl;
 	}
-}
+};

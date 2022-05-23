@@ -56,7 +56,7 @@ int EventTimer::add(std::string description)
 
     unfinished = true;
 
-    std::cout << "Events - " << description << std::endl;
+    std::cout << "[Events] - " << description << std::endl;
     event_names.push_back(description);
     int length = description.length();
     if (length > max_string_length)
