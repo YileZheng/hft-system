@@ -13,6 +13,7 @@
 #include "host_message.hpp"
 // #include "host_kernel_handle_cl.hpp"
 #include "event_timer.hpp"
+#include "xcl2.hpp"
 
 
 #define OCL_CHECK(error,call)                                       \
@@ -30,6 +31,11 @@ char symbols[STOCK_TEST][8] =  {{' ',' ',' ',' ','L','P', 'A','A'},
 // config
 symbol_t *symbol_map=(symbol_t*)symbols;
 
+const char*    STR_ERROR   = "ERROR:   ";
+const char*    STR_FAILED  = "FAILED:  ";
+const char*    STR_PASSED  = "PASSED:  ";
+const char*    STR_INFO    = "INFO:    ";
+const char*    STR_USAGE   = "USAGE:   ";
 
 int main(int argc, char* argv[]) {
     // ------------------------------------------------------------------------------------
@@ -48,7 +54,8 @@ int main(int argc, char* argv[]) {
     int MAX_WRITE = 1024, MAX_READ = 1024;
     char* kernel_name = "order_book";
     // KernelHandle k_handler(MAX_WRITE, MAX_READ, binaryFile, kernel_name);
-    
+
+    std::string xclbin_path(binaryFile);
 	cl::Device 		m_device;
 	cl::Context 	m_context;
 	cl::CommandQueue m_queue;
@@ -172,7 +179,7 @@ int main(int argc, char* argv[]) {
 	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
 	clWaitForEvents(1, (const cl_event *)&event_sp);
 	et.finish();
-	double elapsed_ns = (double)et.last_duration() * 1000000;
+	elapse_ns = (double)et.last_duration() * 1000000;
 
 	et.print();
 
@@ -195,7 +202,7 @@ int main(int argc, char* argv[]) {
 	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
 	clWaitForEvents(1, (const cl_event *)&event_sp);
 	et.finish();
-	double elapsed_ns = (double)et.last_duration() * 1000000;
+	elapse_ns = (double)et.last_duration() * 1000000;
 
 	et.print();
 
