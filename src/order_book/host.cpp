@@ -34,14 +34,23 @@ int main(int argc, char* argv[]) {
     // ------------------------------------------------------------------------------------
 
     char* binaryFile;
-    	if (argc==2) {
-		binaryFile = argv[1];
-		std::cout <<"Using FPGA binary file specfied through the command line: " << binaryFile << std::endl;
-	}
-	else {
-		binaryFile = "./order_book.xclbin";
-		std::cout << "No FPGA binary file specified through the command line, using:" << binaryFile <<std::endl;
-	}
+    char* file_dir;
+    if (argc == 3){
+        file_dir = argv[2];
+        std::cout <<"Using order message file specfied through the command line: " << file_dir << std::endl;
+    }else{
+        file_dir = ".";
+        std::cout <<"No order message file specfied through the command line, using: " << file_dir << std::endl;
+        if (argc==2) {
+            binaryFile = argv[1];
+            std::cout <<"Using FPGA binary file specfied through the command line: " << binaryFile << std::endl;
+        }
+        else {
+            binaryFile = "./order_book.xclbin";
+            std::cout << "No FPGA binary file specified through the command line, using:" << binaryFile <<std::endl;
+        }
+
+    }
     int MAX_WRITE = 1024, MAX_READ = 1024;
     char* kernel_name = "order_book";
     KernelHandle k_handler(MAX_WRITE, MAX_READ, binaryFile, kernel_name);
@@ -64,7 +73,7 @@ int main(int argc, char* argv[]) {
     // std::vector<int,aligned_allocator<int>> source_b(DATA_SIZE, 32);
     // std::vector<int,aligned_allocator<int>> source_results(DATA_SIZE);
 
-	messageManager messages_handler;
+	messageManager messages_handler(file_dir);
     symbol_t read_symbol;
     ap_uint<8> read_max=LEVEL_TEST;
     char instruction;

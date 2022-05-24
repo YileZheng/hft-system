@@ -62,12 +62,12 @@ class messageManager{
 	int level=LEVEL_TEST;
 
 	// files
-	string message_path[STOCK_TEST] =  {{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/AAPL_2012-06-21_34200000_57600000_message_10.csv"},
-										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/AMZN_2012-06-21_34200000_57600000_message_10.csv"},
-										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/GOOG_2012-06-21_34200000_57600000_message_10.csv"}};
-	string orderbook_path[STOCK_TEST] ={{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv"},
-										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/AMZN_2012-06-21_34200000_57600000_orderbook_10.csv"},
-										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/GOOG_2012-06-21_34200000_57600000_orderbook_10.csv"}};
+	string message_path[STOCK_TEST] =  {{"/AAPL_2012-06-21_34200000_57600000_message_10.csv"},
+										{"/AMZN_2012-06-21_34200000_57600000_message_10.csv"},
+										{"/GOOG_2012-06-21_34200000_57600000_message_10.csv"}};
+	string orderbook_path[STOCK_TEST] ={{"/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv"},
+										{"/AMZN_2012-06-21_34200000_57600000_orderbook_10.csv"},
+										{"/GOOG_2012-06-21_34200000_57600000_orderbook_10.csv"}};
 	string result_path{"result.csv"};
 	string answer_path{"answer.csv"};
 	
@@ -107,21 +107,21 @@ class messageManager{
 	bool final_check();
 	string get_true_orderbook(symbol_t target_symbol);
 	
-	messageManager(){
+	messageManager(char* file_dir){
 		// open files
 		for (int i=0; i<STOCK_TEST; i++){
 			// ifstream message, orderbook;
 			// message.open(message_path[i], ios::in);
 			// orderbook.open(orderbook_path[i], ios::in);
-			message_ls[i].open(message_path[i], ios::in);
-			orderbook_ls[i].open(orderbook_path[i], ios::in);
+			message_ls[i].open(file_dir+message_path[i], ios::in);
+			orderbook_ls[i].open(file_dir+orderbook_path[i], ios::in);
 			if((!message_ls[i])){
-				std::cout<<"Sorry the file you are looking for is not available: "<<message_path[i]<<endl;
+				std::cout<<"Sorry the file you are looking for is not available: "<<file_dir+message_path[i]<<endl;
 			}
 			// message_ls.push_back(&message);
 
 			if((!orderbook_ls[i])){
-				std::cout<<"Sorry the file you are looking for is not available: "<<orderbook_path[i]<<endl;
+				std::cout<<"Sorry the file you are looking for is not available: "<<file_dir+orderbook_path[i]<<endl;
 			}
 			// orderbook_ls.push_back(&orderbook);
 		}
