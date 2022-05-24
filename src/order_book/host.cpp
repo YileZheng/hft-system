@@ -11,7 +11,8 @@
 
 #include "common.hpp"
 #include "host_message.hpp"
-#include "host_kernel_handle_cl.hpp"
+// #include "host_kernel_handle_cl.hpp"
+#include "event_timer.hpp"
 
 
 #define OCL_CHECK(error,call)                                       \
@@ -46,7 +47,65 @@ int main(int argc, char* argv[]) {
 	}
     int MAX_WRITE = 1024, MAX_READ = 1024;
     char* kernel_name = "order_book";
-    KernelHandle k_handler(MAX_WRITE, MAX_READ, binaryFile, kernel_name);
+    // KernelHandle k_handler(MAX_WRITE, MAX_READ, binaryFile, kernel_name);
+    
+	cl::Device 		m_device;
+	cl::Context 	m_context;
+	cl::CommandQueue m_queue;
+	cl::Kernel 		m_kernel;
+    EventTimer et;
+	cl::Buffer buf_in;
+	cl::Buffer buf_out;
+	Message* host_write_ptr;
+	price_depth* host_read_ptr;
+    // Platform related operations
+    std::cout << STR_INFO << "Constructing cl API Handler..." << std::endl;
+    std::vector<cl::Device> devices = m_tools::get_xil_devices();
+    std::cout << STR_INFO << "Got devices" << std::endl;
+    m_device = devices[0];
+
+    // Creating Context and Command Queue for selected Device
+    m_context = cl::Context(m_device);
+    std::cout << STR_INFO << "Initialize context" << std::endl;
+    m_queue = cl::CommandQueue(m_context, m_device, CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
+    std::cout << STR_INFO << "Initialize command queue" << std::endl;
+    std::string devName = m_device.getInfo<CL_DEVICE_NAME>();
+    printf("INFO: Found Device=%s\n", devName.c_str());
+
+    cl::Program::Binaries xclBins = m_tools::import_binary_file(xclbin_path);
+    std::cout << STR_INFO << "Read hardware binary" << std::endl;
+    devices.resize(1);
+    cl::Program program(m_context, devices, xclBins);
+    std::cout << STR_INFO << "Programmed device" << std::endl;
+    m_kernel = cl::Kernel(program, kernel_name);
+    std::cout << STR_INFO << "Kernel has been created: " << kernel_name << std::endl;
+
+    et.add("Allocating memory buffer");
+    int ret;
+    ret = posix_memalign((void **)&host_write_ptr, 4096, MAX_WRITE * sizeof(Message));
+    ret |= posix_memalign((void **)&host_read_ptr, 4096, MAX_READ * sizeof(price_depth));
+    if (ret != 0) {
+        std::cout << "Error allocating aligned memory!" << std::endl;
+        exit(1);
+    }
+
+    et.finish();
+
+    // Map our user-allocated buffers as OpenCL buffers using a shared
+    // host pointer
+    et.add("Map host buffers to OpenCL buffers");
+    buf_in = cl::Buffer(m_context,
+                        static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR),
+                        MAX_WRITE * sizeof(Message),
+                        host_write_ptr,
+                        NULL);
+    buf_out = cl::Buffer(m_context,
+                        static_cast<cl_mem_flags>(CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR),
+                        MAX_READ * sizeof(price_depth),
+                        host_read_ptr,
+                        NULL);
+    et.finish();
+
 
     // ------------------------------------------------------------------------------------
     // Step 2: Create buffers and initialize test values
@@ -89,8 +148,56 @@ int main(int argc, char* argv[]) {
 
 	// axilite configuring ------------------------------
 
-    k_handler.config_orderbook(read_max);
-    k_handler.boot_orderbook();
+    // k_handler.config_orderbook(read_max);
+
+	std::cout << "Configuring orderbook system" << std::endl;
+	symbol_t axi_read_symbol = 0;
+	int axi_size = 0;
+    char axi_instruction = 'A'; 
+	ap_uint<8> axi_read_max = read_max;
+
+
+	// Set vadd kernel arguments
+	et.add("Set kernel arguments");
+	m_kernel.setArg(0, buf_in);
+	m_kernel.setArg(1, buf_out);
+	m_kernel.setArg(2, axi_read_symbol);
+	m_kernel.setArg(3, axi_read_max);
+	m_kernel.setArg(4, axi_size);
+	m_kernel.setArg(5, axi_instruction);
+	et.finish();
+
+	cl::Event event_sp;
+	et.add("Enqueue task & wait");
+	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
+	clWaitForEvents(1, (const cl_event *)&event_sp);
+	et.finish();
+	double elapsed_ns = (double)et.last_duration() * 1000000;
+
+	et.print();
+
+
+    // k_handler.boot_orderbook();
+	std::cout << "Booting orderbook system" << std::endl;
+    axi_instruction = 'R'; 
+
+	// Set vadd kernel arguments
+	et.add("Set kernel arguments");
+	m_kernel.setArg(0, buf_in);
+	m_kernel.setArg(1, buf_out);
+	m_kernel.setArg(2, axi_read_symbol);
+	m_kernel.setArg(3, axi_read_max);
+	m_kernel.setArg(4, axi_size);
+	m_kernel.setArg(5, axi_instruction);
+	et.finish();
+
+	et.add("Enqueue task & wait");
+	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
+	clWaitForEvents(1, (const cl_event *)&event_sp);
+	et.finish();
+	double elapsed_ns = (double)et.last_duration() * 1000000;
+
+	et.print();
 
 
     // streaming ---------------------------------------
@@ -101,11 +208,11 @@ int main(int argc, char* argv[]) {
     stream_data = messages_handler.init_book_messsages();
 
     std::cout << "Stream initial orderbook levls to the kernel" <<std::endl;
-    elapse_ns = k_handler.new_orders(stream_data);
+    // elapse_ns = k_handler.new_orders(stream_data);
 
     read_symbol = symbol2hex["AAPL"];
     std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
-    elapse_ns = k_handler.read_orderbook(read_price, read_symbol);
+    // elapse_ns = k_handler.read_orderbook(read_price, read_symbol);
     auto match = messages_handler.check_resultbook(read_price, read_symbol);
 
     return (match ? EXIT_FAILURE :  EXIT_SUCCESS);
