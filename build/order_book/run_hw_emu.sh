@@ -13,7 +13,7 @@ export XILINX_XRT=/usr
 export XILINX_VITIS=/mnt
 export XCL_EMULATION_MODE=hw_emu
 
-./app.exe 
+./app.exe ./order_book.xclbin .
 
 echo "INFO: press Ctrl+a x to exit qemu"
 

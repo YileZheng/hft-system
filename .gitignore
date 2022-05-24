@@ -49,3 +49,10 @@
 
 # debug
 *demo*
+
+*.log
+*/_x/*
+*/hw_emu/*
+*/sw_emu/*
+*/hw/*
+data/**

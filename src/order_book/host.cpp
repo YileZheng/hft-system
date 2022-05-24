@@ -45,6 +45,8 @@ int main(int argc, char* argv[]) {
     if (argc == 3){
         file_dir = argv[2];
         std::cout <<"Using order message file specfied through the command line: " << file_dir << std::endl;
+        binaryFile = argv[1];
+        std::cout <<"Using FPGA binary file specfied through the command line: " << binaryFile << std::endl;
     }else{
         file_dir = ".";
         std::cout <<"No order message file specfied through the command line, using: " << file_dir << std::endl;

@@ -34,6 +34,18 @@ KERNEL_INCLUDE_PATH_FLAG := -I$(SRCDIR)
 KERNEL_SRC_CPP :=  $(SRCDIR)/order_book.cpp
 KERNEL_SRC_CPP +=  $(SRCDIR)/utils.cpp
 
+PACKAGE_DATA_FILES_FLAG := --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/AAPL_2012-06-21_34200000_57600000_message_10.csv
+PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/AMZN_2012-06-21_34200000_57600000_message_10.csv
+PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/GOOG_2012-06-21_34200000_57600000_message_10.csv
+PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/INTC_2012-06-21_34200000_57600000_message_10.csv
+PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/MSFT_2012-06-21_34200000_57600000_message_10.csv
+PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv
+PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/AMZN_2012-06-21_34200000_57600000_orderbook_10.csv
+PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/GOOG_2012-06-21_34200000_57600000_orderbook_10.csv
+PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/INTC_2012-06-21_34200000_57600000_orderbook_10.csv
+PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/MSFT_2012-06-21_34200000_57600000_orderbook_10.csv
+
+
 run: build
 ifeq ($(TARGET),hw)
 	#cd $(BUILD_DIR) && ./app.exe
@@ -77,7 +89,8 @@ $(BUILD_DIR)/package/sd_card.img: $(BUILD_DIR)/app.exe $(BUILD_DIR)/${KERNEL_NAM
 		--package.sd_file ${ROOTFS}/Image \
 		--package.sd_file ./xrt.ini \
 		--package.sd_file ./app.exe \
-		--package.sd_file ./run_$(TARGET).sh
+		--package.sd_file ./run_$(TARGET).sh $(PACKAGE_DATA_FILES_FLAG)
+	# cd $(BUILD_DIR) && mkdir package/sd_card/data && cp $(XF_PROJ_ROOT)/data/lobster/subset/*10.csv ./package/sd_card/data
 
 clean:
 	rm -rf $(BUILD_DIR) a.xlcbin ${KERNEL_NAME}* app.exe *json opencl* *log *summary _x xilinx* .run .Xil .ipcache *.jou
