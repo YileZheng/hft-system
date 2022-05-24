@@ -53,7 +53,7 @@ $(BUILD_DIR)/app.exe:
 	cp xrt.ini $(BUILD_DIR)
 	cp run_$(TARGET).sh $(BUILD_DIR) 
 	$(CXX) -Wall -g -std=c++11 $(HOST_SRC_CPP) -o $(BUILD_DIR)/app.exe $(HOST_INCLUDE_PATH_FLAG) $(HOST_LIBRARY_PATH_FLAG) \
-		-lOpenCL -lpthread -lrt -lstdc++ -lxilinxopencl -lxrt_core
+		-lOpenCL -lpthread -lrt -lstdc++ #-lxilinxopencl -lxrt_core
 
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
 $(BUILD_DIR)/${KERNEL_NAME}.xo:

@@ -1,9 +1,7 @@
 
 #include <vector>
-#include <CL/cl2.hpp>
 #include <iostream>
 #include <fstream>
-#include <CL/cl_ext_xilinx.h>
 #include <unistd.h>
 #include <limits.h>
 #include <sys/stat.h>
@@ -41,7 +39,7 @@ int main(int argc, char* argv[]) {
 		std::cout <<"Using FPGA binary file specfied through the command line: " << binaryFile << std::endl;
 	}
 	else {
-		binaryFile = "../order_book.xclbin";
+		binaryFile = "./order_book.xclbin";
 		std::cout << "No FPGA binary file specified through the command line, using:" << binaryFile <<std::endl;
 	}
     int MAX_WRITE = 1024, MAX_READ = 1024;
