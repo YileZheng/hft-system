@@ -62,7 +62,6 @@ int main(int argc, char* argv[]) {
     }
     int MAX_WRITE = 1024, MAX_READ = 1024;
     char* kernel_name = "order_book";
-    // KernelHandle k_handler(MAX_WRITE, MAX_READ, binaryFile, kernel_name);
 
     std::string xclbin_path(binaryFile);
 	cl::Device 		m_device;
@@ -96,31 +95,33 @@ int main(int argc, char* argv[]) {
     m_kernel = cl::Kernel(program, kernel_name);
     std::cout << STR_INFO << "Kernel has been created: " << kernel_name << std::endl;
 
-    et.add("Allocating memory buffer");
-    int ret;
-    ret = posix_memalign((void **)&host_write_ptr, 4096, MAX_WRITE * sizeof(Message));
-    ret |= posix_memalign((void **)&host_read_ptr, 4096, MAX_READ * sizeof(price_depth));
-    if (ret != 0) {
-        std::cout << "Error allocating aligned memory!" << std::endl;
-        exit(1);
-    }
 
-    et.finish();
+    KernelHandle k_handler(MAX_WRITE, MAX_READ, &m_device, &m_context, &m_queue, &m_kernel);
+    // et.add("Allocating memory buffer");
+    // int ret;
+    // ret = posix_memalign((void **)&host_write_ptr, 4096, MAX_WRITE * sizeof(Message));
+    // ret |= posix_memalign((void **)&host_read_ptr, 4096, MAX_READ * sizeof(price_depth));
+    // if (ret != 0) {
+    //     std::cout << "Error allocating aligned memory!" << std::endl;
+    //     exit(1);
+    // }
 
-    // Map our user-allocated buffers as OpenCL buffers using a shared
-    // host pointer
-    et.add("Map host buffers to OpenCL buffers");
-    buf_in = cl::Buffer(m_context,
-                        static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR),
-                        MAX_WRITE * sizeof(Message),
-                        host_write_ptr,
-                        NULL);
-    buf_out = cl::Buffer(m_context,
-                        static_cast<cl_mem_flags>(CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR),
-                        MAX_READ * sizeof(price_depth),
-                        host_read_ptr,
-                        NULL);
-    et.finish();
+    // et.finish();
+
+    // // Map our user-allocated buffers as OpenCL buffers using a shared
+    // // host pointer
+    // et.add("Map host buffers to OpenCL buffers");
+    // buf_in = cl::Buffer(m_context,
+    //                     static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR),
+    //                     MAX_WRITE * sizeof(Message),
+    //                     host_write_ptr,
+    //                     NULL);
+    // buf_out = cl::Buffer(m_context,
+    //                     static_cast<cl_mem_flags>(CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR),
+    //                     MAX_READ * sizeof(price_depth),
+    //                     host_read_ptr,
+    //                     NULL);
+    // et.finish();
 
 
     // ------------------------------------------------------------------------------------
@@ -164,56 +165,56 @@ int main(int argc, char* argv[]) {
 
 	// axilite configuring ------------------------------
 
-    // k_handler.config_orderbook(read_max);
+    k_handler.config_orderbook(read_max);
 
-	std::cout << "Configuring orderbook system" << std::endl;
-	symbol_t axi_read_symbol = 0;
-	int axi_size = 0;
-    char axi_instruction = 'A'; 
-	ap_uint<8> axi_read_max = read_max;
-
-
-	// Set vadd kernel arguments
-	et.add("Set kernel arguments");
-	m_kernel.setArg(0, buf_in);
-	m_kernel.setArg(1, buf_out);
-	m_kernel.setArg(2, axi_read_symbol);
-	m_kernel.setArg(3, axi_read_max);
-	m_kernel.setArg(4, axi_size);
-	m_kernel.setArg(5, axi_instruction);
-	et.finish();
-
-	cl::Event event_sp;
-	et.add("Enqueue task & wait");
-	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
-	clWaitForEvents(1, (const cl_event *)&event_sp);
-	et.finish();
-	elapse_ns = (double)et.last_duration() * 1000000;
-
-	et.print();
+	// std::cout << "Configuring orderbook system" << std::endl;
+	// symbol_t axi_read_symbol = 0;
+	// int axi_size = 0;
+    // char axi_instruction = 'A'; 
+	// ap_uint<8> axi_read_max = read_max;
 
 
-    // k_handler.boot_orderbook();
-	std::cout << "Booting orderbook system" << std::endl;
-    axi_instruction = 'R'; 
+	// // Set vadd kernel arguments
+	// et.add("Set kernel arguments");
+	// m_kernel.setArg(0, buf_in);
+	// m_kernel.setArg(1, buf_out);
+	// m_kernel.setArg(2, axi_read_symbol);
+	// m_kernel.setArg(3, axi_read_max);
+	// m_kernel.setArg(4, axi_size);
+	// m_kernel.setArg(5, axi_instruction);
+	// et.finish();
 
-	// Set vadd kernel arguments
-	et.add("Set kernel arguments");
-	m_kernel.setArg(0, buf_in);
-	m_kernel.setArg(1, buf_out);
-	m_kernel.setArg(2, axi_read_symbol);
-	m_kernel.setArg(3, axi_read_max);
-	m_kernel.setArg(4, axi_size);
-	m_kernel.setArg(5, axi_instruction);
-	et.finish();
+	// cl::Event event_sp;
+	// et.add("Enqueue task & wait");
+	// m_queue.enqueueTask(m_kernel, NULL, &event_sp);
+	// clWaitForEvents(1, (const cl_event *)&event_sp);
+	// et.finish();
+	// elapse_ns = (double)et.last_duration() * 1000000;
 
-	et.add("Enqueue task & wait");
-	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
-	clWaitForEvents(1, (const cl_event *)&event_sp);
-	et.finish();
-	elapse_ns = (double)et.last_duration() * 1000000;
+	// et.print();
 
-	et.print();
+
+    k_handler.boot_orderbook();
+	// std::cout << "Booting orderbook system" << std::endl;
+    // axi_instruction = 'R'; 
+
+	// // Set vadd kernel arguments
+	// et.add("Set kernel arguments");
+	// m_kernel.setArg(0, buf_in);
+	// m_kernel.setArg(1, buf_out);
+	// m_kernel.setArg(2, axi_read_symbol);
+	// m_kernel.setArg(3, axi_read_max);
+	// m_kernel.setArg(4, axi_size);
+	// m_kernel.setArg(5, axi_instruction);
+	// et.finish();
+
+	// et.add("Enqueue task & wait");
+	// m_queue.enqueueTask(m_kernel, NULL, &event_sp);
+	// clWaitForEvents(1, (const cl_event *)&event_sp);
+	// et.finish();
+	// elapse_ns = (double)et.last_duration() * 1000000;
+
+	// et.print();
 
 
     // streaming ---------------------------------------
@@ -224,11 +225,11 @@ int main(int argc, char* argv[]) {
     stream_data = messages_handler.init_book_messsages();
 
     std::cout << "Stream initial orderbook levls to the kernel" <<std::endl;
-    // elapse_ns = k_handler.new_orders(stream_data);
+    elapse_ns = k_handler.new_orders(stream_data);
 
     read_symbol = symbol2hex["AAPL"];
     std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
-    // elapse_ns = k_handler.read_orderbook(read_price, read_symbol);
+    elapse_ns = k_handler.read_orderbook(read_price, read_symbol);
     auto match = messages_handler.check_resultbook(read_price, read_symbol);
 
     return (match ? EXIT_FAILURE :  EXIT_SUCCESS);

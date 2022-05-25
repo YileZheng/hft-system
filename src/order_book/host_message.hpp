@@ -57,6 +57,11 @@ class last_manager{
 
 
 class messageManager{
+	const char*    STR_ERROR   = "ERROR:   ";
+	const char*    STR_FAILED  = "FAILED:  ";
+	const char*    STR_PASSED  = "PASSED:  ";
+	const char*    STR_INFO    = "INFO:    ";
+	const char*    STR_USAGE   = "USAGE:   ";
 
 	int time_speedup = 1; // how many times faster to backtest, controls the message send rate
 	int level=LEVEL_TEST;

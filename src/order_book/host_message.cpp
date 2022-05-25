@@ -159,7 +159,12 @@ bool messageManager::check_resultbook(
 	price_depth price_read;
 	vector<vector<price_depth>> resultbook;
 	vector<price_depth> cur_v;
-	bool match = true;
+	bool match = false;
+
+	if (price_depth_table.empty()){
+		std::cout << STR_FAILED << "Got empty order book price levels of symbol " << std::string((char*)&target_symbol, 8) << std::endl;
+		return match;
+	}
 
 	while (!price_depth_table.empty()){
 		price_read = price_depth_table[0];
@@ -181,7 +186,8 @@ bool messageManager::check_resultbook(
 		std::cout <<"Symbol: " <<symbol_map[loc]<<": Result orderbook not match !!!!!!!!" <<std::endl;
 		std::cout <<"Ground Truth: "<< last_orderbook_line << std::endl;
 		std::cout <<"OrderBook:    "<< s << std::endl;
-		match = false;
+	}else{
+		match = true;
 	}
 	result << s << endl;
 	answer << last_orderbook_line << endl;
