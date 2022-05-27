@@ -84,9 +84,9 @@ class KernelHandle{
 	}
 
 	~KernelHandle(){
-		m_queue.enqueueUnmapMemObject(buf_in, host_write_ptr);
-		m_queue.enqueueUnmapMemObject(buf_out, host_read_ptr);
-		m_queue.finish();
+		// m_queue.enqueueUnmapMemObject(buf_in, host_write_ptr);
+		// m_queue.enqueueUnmapMemObject(buf_out, host_read_ptr);
+		// m_queue.finish();
 	}
 
     double config_orderbook(ap_uint<8> axi_read_max, cl::CommandQueue& m_queue, cl::Kernel& m_kernel);
