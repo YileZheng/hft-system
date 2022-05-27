@@ -11,30 +11,18 @@ class KernelHandle{
 
     EventTimer et;
 
-	
-	cl::Device* 		m_device_ptr;
-	cl::Context*		m_context_ptr;
-	cl::CommandQueue* 	m_queue_ptr;
-	cl::Kernel* 		m_kernel_ptr;
-
 	cl::Buffer buf_in;
 	cl::Buffer buf_out;
 	Message* host_write_ptr;
 	price_depth* host_read_ptr;
 
     int MAX_WRITE, MAX_READ;
-    int read_lvls;
-
-	
+    int read_lvls;	
 	
 	public:
-	KernelHandle(int max_write, int max_read, cl::Device* device_ptr, cl::Context* context_ptr, cl::CommandQueue* queue_ptr, cl::Kernel* kernel_ptr){
+	KernelHandle(int max_write, int max_read, cl::Context m_context){
         MAX_WRITE = max_write, MAX_READ = max_read;
 
-		m_device_ptr = device_ptr;
-		m_context_ptr = context_ptr;
-		m_queue_ptr = queue_ptr;
-		m_kernel_ptr = kernel_ptr;
 
 		et.add("Allocating memory buffer");
 		int ret;
@@ -50,12 +38,12 @@ class KernelHandle{
 		// Map our user-allocated buffers as OpenCL buffers using a shared
 		// host pointer
 		et.add("Map host buffers to OpenCL buffers");
-		buf_in = cl::Buffer(*m_context_ptr,
+		buf_in = cl::Buffer(m_context,
 							static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR),
 							MAX_WRITE * sizeof(Message),
 							host_write_ptr,
 							NULL);
-		buf_out = cl::Buffer(*m_context_ptr,
+		buf_out = cl::Buffer(m_context,
 							static_cast<cl_mem_flags>(CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR),
 							MAX_READ * sizeof(price_depth),
 							host_read_ptr,
@@ -66,13 +54,13 @@ class KernelHandle{
 		// // Map our user-allocated buffers as OpenCL buffers using a shared
 		// // host pointer
 		// et.add("Allocate contiguous OpenCL buffers");
-		// buf_in = cl::Buffer(*m_context_ptr,
+		// buf_in = cl::Buffer(m_context,
 		// 					static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR),
 		// 					MAX_WRITE * sizeof(Message),
 		// 					NULL,
 		// 					NULL);
 
-		// buf_out = cl::Buffer(*m_context_ptr,
+		// buf_out = cl::Buffer(m_context,
 		// 					static_cast<cl_mem_flags>(CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR),
 		// 					MAX_READ * sizeof(price_depth),
 		// 					NULL,
@@ -81,12 +69,12 @@ class KernelHandle{
 		// et.finish();
 
 		// et.add("Map buffers to userspace pointers");
-		// host_write_ptr = (Message *)m_queue_ptr->enqueueMapBuffer(buf_in,
+		// host_write_ptr = (Message *)m_queue.enqueueMapBuffer(buf_in,
 		// 											CL_TRUE,
 		// 											CL_MAP_WRITE,
 		// 											0,
 		// 											MAX_WRITE * sizeof(Message));
-		// host_read_ptr = (price_depth *)m_queue_ptr->enqueueMapBuffer(buf_out,
+		// host_read_ptr = (price_depth *)m_queue.enqueueMapBuffer(buf_out,
 		// 											CL_TRUE,
 		// 											CL_MAP_READ,
 		// 											0,
@@ -96,15 +84,15 @@ class KernelHandle{
 	}
 
 	~KernelHandle(){
-		m_queue_ptr->enqueueUnmapMemObject(buf_in, host_write_ptr);
-		m_queue_ptr->enqueueUnmapMemObject(buf_out, host_read_ptr);
-		m_queue_ptr->finish();
+		m_queue.enqueueUnmapMemObject(buf_in, host_write_ptr);
+		m_queue.enqueueUnmapMemObject(buf_out, host_read_ptr);
+		m_queue.finish();
 	}
 
-    double config_orderbook(ap_uint<8> axi_read_max);
-    double boot_orderbook();
-    double read_orderbook(vector<price_depth> data_out, symbol_t axi_read_symbol);
-    double new_orders(vector<Message> data_in);
+    double config_orderbook(ap_uint<8> axi_read_max, cl::CommandQueue& m_queue, cl::Kernel& m_kernel);
+    double boot_orderbook(cl::CommandQueue& m_queue, cl::Kernel& m_kernel);
+    double read_orderbook(vector<price_depth> data_out, symbol_t axi_read_symbol, cl::CommandQueue& m_queue, cl::Kernel& m_kernel);
+    double new_orders(vector<Message> data_in, cl::CommandQueue& m_queue, cl::Kernel& m_kernel);
     double run(
 	    // data
 	    vector<Message> data_in,
@@ -115,7 +103,8 @@ class KernelHandle{
 	    ap_uint<8> axi_read_max,
 
 	    // control input
-	    char axi_instruction  
+	    char axi_instruction, 
+		cl::CommandQueue& m_queue, cl::Kernel& m_kernel
     );
 
 };
@@ -123,7 +112,9 @@ class KernelHandle{
 
 
 double KernelHandle::config_orderbook(
-	ap_uint<8> axi_read_max 
+	ap_uint<8> axi_read_max,
+
+	cl::CommandQueue& m_queue, cl::Kernel& m_kernel 
 ){
 	std::cout << "Configuring orderbook system" << std::endl;
 	symbol_t axi_read_symbol = 0;
@@ -134,17 +125,17 @@ double KernelHandle::config_orderbook(
 
 	// Set vadd kernel arguments
 	et.add("Set kernel arguments");
-	m_kernel_ptr->setArg(0, buf_in);
-	m_kernel_ptr->setArg(1, buf_out);
-	m_kernel_ptr->setArg(2, axi_read_symbol);
-	m_kernel_ptr->setArg(3, axi_read_max);
-	m_kernel_ptr->setArg(4, axi_size);
-	m_kernel_ptr->setArg(5, axi_instruction);
+	m_kernel.setArg(0, buf_in);
+	m_kernel.setArg(1, buf_out);
+	m_kernel.setArg(2, axi_read_symbol);
+	m_kernel.setArg(3, axi_read_max);
+	m_kernel.setArg(4, axi_size);
+	m_kernel.setArg(5, axi_instruction);
 	et.finish();
 
 	cl::Event event_sp;
 	et.add("Enqueue task & wait");
-	m_queue_ptr->enqueueTask(*m_kernel_ptr, NULL, &event_sp);
+	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
 	clWaitForEvents(1, (const cl_event *)&event_sp);
 	et.finish();
 	double elapsed_ns = (double)et.last_duration() * 1000000;
@@ -154,7 +145,9 @@ double KernelHandle::config_orderbook(
 }
 
 
-double KernelHandle::boot_orderbook(){
+double KernelHandle::boot_orderbook(
+	cl::CommandQueue& m_queue, cl::Kernel& m_kernel
+){
 	std::cout << "Booting orderbook system" << std::endl;
 	symbol_t axi_read_symbol = 0;
 	ap_uint<8> axi_read_max = read_lvls;
@@ -163,17 +156,17 @@ double KernelHandle::boot_orderbook(){
 
 	// Set vadd kernel arguments
 	et.add("Set kernel arguments");
-	m_kernel_ptr->setArg(0, buf_in);
-	m_kernel_ptr->setArg(1, buf_out);
-	m_kernel_ptr->setArg(2, axi_read_symbol);
-	m_kernel_ptr->setArg(3, axi_read_max);
-	m_kernel_ptr->setArg(4, axi_size);
-	m_kernel_ptr->setArg(5, axi_instruction);
+	m_kernel.setArg(0, buf_in);
+	m_kernel.setArg(1, buf_out);
+	m_kernel.setArg(2, axi_read_symbol);
+	m_kernel.setArg(3, axi_read_max);
+	m_kernel.setArg(4, axi_size);
+	m_kernel.setArg(5, axi_instruction);
 	et.finish();
 
 	cl::Event event_sp;
 	et.add("Enqueue task & wait");
-	m_queue_ptr->enqueueTask(*m_kernel_ptr, NULL, &event_sp);
+	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
 	clWaitForEvents(1, (const cl_event *)&event_sp);
 	et.finish();
 	double elapsed_ns = (double)et.last_duration() * 1000000;
@@ -185,7 +178,9 @@ double KernelHandle::boot_orderbook(){
 
 double KernelHandle::read_orderbook(
 	vector<price_depth> data_out, 
-	symbol_t axi_read_symbol 
+	symbol_t axi_read_symbol,
+
+	cl::CommandQueue& m_queue, cl::Kernel& m_kernel 
 ){
 	std::cout << "Read orderbook from kernel" << std::endl;
 	ap_uint<8> axi_read_max = read_lvls;
@@ -194,24 +189,24 @@ double KernelHandle::read_orderbook(
 
 	// Set vadd kernel arguments
 	et.add("Set kernel arguments");
-	m_kernel_ptr->setArg(0, buf_in);
-	m_kernel_ptr->setArg(1, buf_out);
-	m_kernel_ptr->setArg(2, axi_read_symbol);
-	m_kernel_ptr->setArg(3, axi_read_max);
-	m_kernel_ptr->setArg(4, axi_size);
-	m_kernel_ptr->setArg(5, axi_instruction);
+	m_kernel.setArg(0, buf_in);
+	m_kernel.setArg(1, buf_out);
+	m_kernel.setArg(2, axi_read_symbol);
+	m_kernel.setArg(3, axi_read_max);
+	m_kernel.setArg(4, axi_size);
+	m_kernel.setArg(5, axi_instruction);
 	et.finish();
 
 	cl::Event event_sp;
 	et.add("Enqueue task & wait");
-	m_queue_ptr->enqueueTask(*m_kernel_ptr, NULL, &event_sp);
+	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
 	clWaitForEvents(1, (const cl_event *)&event_sp);
 	et.finish();
 	double elapsed_ns = (double)et.last_duration() * 1000000;
 
 	// Migrate memory back from device
 	et.add("Read back computation results");
-	m_queue_ptr->enqueueMigrateMemObjects({buf_out}, CL_MIGRATE_MEM_OBJECT_HOST, NULL, &event_sp);
+	m_queue.enqueueMigrateMemObjects({buf_out}, CL_MIGRATE_MEM_OBJECT_HOST, NULL, &event_sp);
 	clWaitForEvents(1, (const cl_event *)&event_sp);
 	et.finish();
 	
@@ -227,7 +222,9 @@ double KernelHandle::read_orderbook(
 
 double KernelHandle::new_orders(
 	// data
-	vector<Message> data_in
+	vector<Message> data_in,
+
+	cl::CommandQueue& m_queue, cl::Kernel& m_kernel
 ){
 	std::cout << "Feed new orders to orderbook system" << std::endl;
 	symbol_t axi_read_symbol = 0;
@@ -242,22 +239,22 @@ double KernelHandle::new_orders(
 
 	// Set vadd kernel arguments
 	et.add("Set kernel arguments");
-	m_kernel_ptr->setArg(0, buf_in);
-	m_kernel_ptr->setArg(1, buf_out);
-	m_kernel_ptr->setArg(2, axi_read_symbol);
-	m_kernel_ptr->setArg(3, axi_read_max);
-	m_kernel_ptr->setArg(4, axi_size);
-	m_kernel_ptr->setArg(5, axi_instruction);
+	m_kernel.setArg(0, buf_in);
+	m_kernel.setArg(1, buf_out);
+	m_kernel.setArg(2, axi_read_symbol);
+	m_kernel.setArg(3, axi_read_max);
+	m_kernel.setArg(4, axi_size);
+	m_kernel.setArg(5, axi_instruction);
 	et.finish();
 
 	cl::Event event_sp;
 	// Send the buffers down to the Alveo card
 	et.add("Memory object migration enqueue");
-	m_queue_ptr->enqueueMigrateMemObjects({buf_in}, 0, NULL, &event_sp);
+	m_queue.enqueueMigrateMemObjects({buf_in}, 0, NULL, &event_sp);
 	clWaitForEvents(1, (const cl_event *)&event_sp);
 
 	et.add("Enqueue task & wait");
-	m_queue_ptr->enqueueTask(*m_kernel_ptr, NULL, &event_sp);
+	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
 	clWaitForEvents(1, (const cl_event *)&event_sp);
 	et.finish();
 	double elapsed_ns = (double)et.last_duration() * 1000000;
@@ -276,7 +273,9 @@ double KernelHandle::run(
 	ap_uint<8> axi_read_max,
 
 	// control input
-	char axi_instruction  
+	char axi_instruction, 
+
+	cl::CommandQueue& m_queue, cl::Kernel& m_kernel
 ){
 
 	int axi_size = data_in.size();
@@ -287,22 +286,22 @@ double KernelHandle::run(
 
 	// Set vadd kernel arguments
 	et.add("Set kernel arguments");
-	m_kernel_ptr->setArg(0, buf_in);
-	m_kernel_ptr->setArg(1, buf_out);
-	m_kernel_ptr->setArg(2, axi_read_symbol);
-	m_kernel_ptr->setArg(3, axi_read_max);
-	m_kernel_ptr->setArg(4, axi_size);
-	m_kernel_ptr->setArg(5, axi_instruction);
+	m_kernel.setArg(0, buf_in);
+	m_kernel.setArg(1, buf_out);
+	m_kernel.setArg(2, axi_read_symbol);
+	m_kernel.setArg(3, axi_read_max);
+	m_kernel.setArg(4, axi_size);
+	m_kernel.setArg(5, axi_instruction);
 	et.finish();
 
 	cl::Event event_sp;
 	// Send the buffers down to the Alveo card
 	et.add("Memory object migration enqueue");
-	m_queue_ptr->enqueueMigrateMemObjects({buf_in}, 0, NULL, &event_sp);
+	m_queue.enqueueMigrateMemObjects({buf_in}, 0, NULL, &event_sp);
 	clWaitForEvents(1, (const cl_event *)&event_sp);
 
 	et.add("Enqueue task & wait");
-	m_queue_ptr->enqueueTask(*m_kernel_ptr, NULL, &event_sp);
+	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
 	clWaitForEvents(1, (const cl_event *)&event_sp);
 	et.finish();
 	double elapsed_ns = (double)et.last_duration() * 1000000;
@@ -310,7 +309,7 @@ double KernelHandle::run(
 	// Migrate memory back from device
 	if (axi_instruction == 'r'){
 		et.add("Read back computation results");
-		m_queue_ptr->enqueueMigrateMemObjects({buf_out}, CL_MIGRATE_MEM_OBJECT_HOST, NULL, &event_sp);
+		m_queue.enqueueMigrateMemObjects({buf_out}, CL_MIGRATE_MEM_OBJECT_HOST, NULL, &event_sp);
 		clWaitForEvents(1, (const cl_event *)&event_sp);
 		et.finish();
 		
