@@ -9,7 +9,7 @@
 
 #include "common.hpp"
 #include "host_message.hpp"
-// #include "host_kernel_handle_cl.hpp"
+#include "host_kernel_handle_cl.hpp"
 #include "event_timer.hpp"
 #include "xcl2.hpp"
 
@@ -65,9 +65,9 @@ int main(int argc, char* argv[]) {
 
     std::string xclbin_path(binaryFile);
 	cl::Device 		m_device;
-	cl::Context 	m_context;
-	cl::CommandQueue m_queue;
-	cl::Kernel 		m_kernel;
+	// cl::Context 	m_context;
+	// cl::CommandQueue m_queue;
+	// cl::Kernel 		m_kernel;
     EventTimer et;
 	cl::Buffer buf_in;
 	cl::Buffer buf_out;
@@ -80,9 +80,9 @@ int main(int argc, char* argv[]) {
     m_device = devices[0];
 
     // Creating Context and Command Queue for selected Device
-    m_context = cl::Context(m_device);
+    cl::Context m_context(m_device);
     std::cout << STR_INFO << "Initialize context" << std::endl;
-    m_queue = cl::CommandQueue(m_context, m_device, CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
+    cl::CommandQueue m_queue(m_context, m_device, CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
     std::cout << STR_INFO << "Initialize command queue" << std::endl;
     std::string devName = m_device.getInfo<CL_DEVICE_NAME>();
     printf("INFO: Found Device=%s\n", devName.c_str());
@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
     devices.resize(1);
     cl::Program program(m_context, devices, xclBins);
     std::cout << STR_INFO << "Programmed device" << std::endl;
-    m_kernel = cl::Kernel(program, kernel_name);
+    cl::Kernel m_kernel(program, kernel_name);
     std::cout << STR_INFO << "Kernel has been created: " << kernel_name << std::endl;
 
 

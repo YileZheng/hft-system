@@ -1,13 +1,12 @@
 #include "common.hpp"
 #include "event_timer.hpp"
-#include <CL/cl2.hpp>
 
 class KernelHandle{
-	char*    STR_ERROR   = "ERROR:   ";
-	char*    STR_FAILED  = "FAILED:  ";
-	char*    STR_PASSED  = "PASSED:  ";
-	char*    STR_INFO    = "INFO:    ";
-	char*    STR_USAGE   = "USAGE:   ";
+	const char*    STR_ERROR   = "ERROR:   ";
+	const char*    STR_FAILED  = "FAILED:  ";
+	const char*    STR_PASSED  = "PASSED:  ";
+	const char*    STR_INFO    = "INFO:    ";
+	const char*    STR_USAGE   = "USAGE:   ";
 
     EventTimer et;
 
