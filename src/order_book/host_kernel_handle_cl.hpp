@@ -103,12 +103,12 @@ class KernelHandle{
 
     double config_orderbook(ap_uint<8> axi_read_max);
     double boot_orderbook();
-    double read_orderbook(vector<price_depth> data_out, symbol_t axi_read_symbol);
+    double read_orderbook(vector<price_depth>& data_out, symbol_t axi_read_symbol);
     double new_orders(vector<Message> data_in);
     double run(
 	    // data
 	    vector<Message> data_in,
-	    vector<price_depth> data_out,
+	    vector<price_depth>& data_out,
 
 	    // configuration inputs
 	    symbol_t axi_read_symbol,
@@ -217,7 +217,7 @@ double KernelHandle::read_orderbook(
 	
 	data_out.clear();
 	for (int i=0; i<2*read_lvls+2; i++){
-		data_out[i] = host_read_ptr[i];
+		data_out.push_back(host_read_ptr[i]);
 	}
 	
 	et.print();
@@ -316,7 +316,7 @@ double KernelHandle::run(
 		
 		data_out.clear();
 		for (int i=0; i<2*read_lvls+2; i++){
-			data_out[i] = host_read_ptr[i];
+			data_out.push_back(host_read_ptr[i]);
 		}
 	}
 

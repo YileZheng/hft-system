@@ -77,17 +77,21 @@ class messageManager{
 	string answer_path{"answer.csv"};
 	
 	// symbol
-	#ifndef __isLittleEndian__
-	char symbols[STOCK_TEST][8] =  {{'A','A','P','L',' ',' ',' ',' '},
-									{'A','M','Z','N',' ',' ',' ',' '},
-									{'G','O','O','G',' ',' ',' ',' '}};
-	#else
-	char symbols[STOCK_TEST][8] =  {{' ',' ',' ',' ','L','P', 'A','A'},
-									{' ',' ',' ',' ', 'N','Z','M','A'},
-									{' ',' ',' ',' ', 'G','O','O','G'}};
-	#endif
+	// #ifndef __isLittleEndian__
+	// char symbols[STOCK_TEST][8] =  {{'A','A','P','L',' ',' ',' ',' '},
+	// 								{'A','M','Z','N',' ',' ',' ',' '},
+	// 								{'G','O','O','G',' ',' ',' ',' '}};
+	// #else
+	// char symbols[STOCK_TEST][8] =  {{' ',' ',' ',' ','L','P', 'A','A'},
+	// 								{' ',' ',' ',' ', 'N','Z','M','A'},
+	// 								{' ',' ',' ',' ', 'G','O','O','G'}};
+	// #endif
 
-	symbol_t *symbol_map=(symbol_t*)symbols;
+	// symbol_t *symbol_map=(symbol_t*)symbols;
+	// 10 stock symbols: "AAPL", "AMZN", "GOOG",  "INTC", "MSFT",  "SPY", "TSLA", "NVDA", "AMD", "QCOM"
+	symbol_t symbol_map[STOCKS] = {  0x4141504c20202020, 0x414d5a4e20202020, 0x474f4f4720202020, 0x494e544320202020, 
+									0x4d53465420202020, 0x5350592020202020, 0x54534c4120202020, 0x4e56444120202020, 
+									0x414d442020202020, 0x51434f4d20202020};
 
 	// caches
 	last_manager* last_ls[STOCK_TEST];

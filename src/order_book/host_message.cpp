@@ -160,7 +160,7 @@ bool messageManager::check_resultbook(
 	vector<vector<price_depth>> resultbook;
 	vector<price_depth> cur_v;
 	bool match = false;
-
+	std::cout << "Checking orderbook results... " << std::endl;
 	if (price_depth_table.empty()){
 		std::cout << STR_FAILED << "Got empty order book price levels of symbol " << std::string((char*)&target_symbol, 8) << std::endl;
 		return match;

@@ -110,8 +110,8 @@ int main()
 	int id=-1;
 	orderOp odop;
 	ap_uint<1> bid, req_read;
-	price_depth price_stream_out[100];
-	Message stream_in[10];
+	price_depth price_stream_out[100] = {0};
+	Message stream_in[10] = {0};
 	price_depth price_read;
 	Message input_in;
 
