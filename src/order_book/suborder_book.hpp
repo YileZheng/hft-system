@@ -634,7 +634,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 ){
 	price_depth dummy;
 	dummy.price = 0;
-	dummy.size = 0;
+	dummy.size = -1;
 	price_depth lvl_out;
 	price_depth_chain cur_block;
 	ap_uint<1> req_read = read_en;

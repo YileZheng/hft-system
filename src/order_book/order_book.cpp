@@ -18,8 +18,8 @@ void order_book(
 	char axi_instruction  // void, run, halt, read book, clear, config symbol map | read_max 
 
 ){
-#pragma HLS INTERFACE m_axi depth=4096 bundle=gmem port=stream_out offset=slave
-#pragma HLS INTERFACE m_axi depth=4096 bundle=gmem port=stream_in offset=slave
+#pragma HLS INTERFACE m_axi depth=4096 bundle=gmem0 port=stream_out offset=slave
+#pragma HLS INTERFACE m_axi depth=4096 bundle=gmem1 port=stream_in offset=slave
 
 #pragma HLS INTERFACE s_axilite bundle=control port=return
 #pragma HLS INTERFACE s_axilite port=axi_instruction bundle=control
@@ -34,9 +34,10 @@ void order_book(
 #pragma HLS ARRAY_PARTITION variable=books dim=1 complete
   // TODO
 	// 10 stock symbols: "AAPL", "AMZN", "GOOG",  "INTC", "MSFT",  "SPY", "TSLA", "NVDA", "AMD", "QCOM"
-	static symbol_t symbol_map[STOCKS] = {  0x4141504c20202020, 0x414d5a4e20202020, 0x474f4f4720202020, 0x494e544320202020, 
-											0x4d53465420202020, 0x5350592020202020, 0x54534c4120202020, 0x4e56444120202020, 
-											0x414d442020202020, 0x51434f4d20202020};
+	// static symbol_t symbol_map[STOCKS] = {  0x4141504c20202020, 0x414d5a4e20202020, 0x474f4f4720202020, 0x494e544320202020, 
+	// 										0x4d53465420202020, 0x5350592020202020, 0x54534c4120202020, 0x4e56444120202020, 
+	// 										0x414d442020202020, 0x51434f4d20202020};
+	static symbol_t symbol_map[STOCKS] = {0};
 #pragma HLS ARRAY_RESHAPE variable=symbol_map dim=1 complete
 	static price_depth stream_out_buffer[STOCKS][STREAMOUT_BUFFER_SIZE];
 #pragma HLS ARRAY_PARTITION variable=stream_out_buffer dim=1 complete
@@ -44,7 +45,7 @@ void order_book(
 	static ap_uint<8> read_max=10;
 	
 	// control signal
-	static ap_uint<1> halt=1, en_read=0, en_clear=0; 
+	static ap_uint<1> halt=1, en_read=0, en_clear=0, read_map=0; 
 	static char instruction = 'v';
 
 	// dataflow
@@ -71,6 +72,7 @@ void order_book(
 		en_clear = 1;
 		break;
 	case 's':	// update symbol map
+		read_map = 1;
 		break;
 	case 'm':	// update read max 
 		read_max = axi_read_max;
@@ -86,7 +88,7 @@ void order_book(
 
 	// read symbol mapping
 	if (en_read){
-		index_read = symbol_mapping(symbol_map, axi_read_symbol);
+		index_read = symbol_mapping(symbol_map, axi_read_symbol, true);
 #ifdef __DEBUG__
 			if (!(index_read>=0)&&(index_read<STOCKS)){
 				printf("Read symbol not found in the local symbol map, discard!!!!!!!!");
@@ -104,7 +106,7 @@ void order_book(
 		ordermessage_in.order_info.price = message_in.price;
 		ordermessage_in.operation = message_in.operation;
 		ordermessage_in.side = message_in.side;
-		index_msg = symbol_mapping(symbol_map, message_in.symbol);
+		index_msg = symbol_mapping(symbol_map, message_in.symbol, false);
 #ifdef __DEBUG__
 			if (!(index_msg>=0)&&(index_msg<STOCKS)){
 				printf("Input symbol not found in the local symbol map, discard!!!!!!!!");
@@ -119,7 +121,13 @@ void order_book(
 		}
 		
 	}
-
+	// if (read_map){
+	// 	READ_MAP:
+	// 	for (int i=0; i<STOCKS; i++){
+	// 		stream_out[i].price = (price_t)symbol_map[i];
+	// 	}
+	// 	read_map = 0;
+	// }
 	if (en_read){
 		READ_STREAM_BUFFER:
 		for (int i=0; i<(2*read_max)+2; i++){
@@ -134,9 +142,11 @@ void order_book(
 
 int symbol_mapping(
 	symbol_t symbol_map[STOCKS],
-	symbol_t symbol
+	symbol_t symbol,
+	bool read_req
 ){
 #pragma HLS INLINE off
+	static char num = 0;
 	int index=-1;
 	SYMBOL_MAPPING:
 	for (int i=0; i<STOCKS; i++){
@@ -144,6 +154,10 @@ int symbol_mapping(
 		if (symbol_map[i]==symbol){
 			index = i;
 		}
+	}
+	if ((index == -1)&&(num != STOCKS)&&(!read_req)){
+		index = num;
+		symbol_map[num++] = symbol;
 	}
 	return index;
 }

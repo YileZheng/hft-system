@@ -271,56 +271,56 @@ int main(int argc, char* argv[]) {
 
 	// axilite configuring ------------------------------
 
-    // k_handler.config_orderbook(read_max);
+    k_handler.config_orderbook(read_max, m_queue, m_kernel);
 
-	std::cout << "Configuring orderbook system" << std::endl;
-	symbol_t axi_read_symbol = 0;
-	int axi_size = 0;
-    char axi_instruction = 'A'; 
-	ap_uint<8> axi_read_max = read_max;
-
-
-	// Set vadd kernel arguments
-	et.add("Set kernel arguments");
-	m_kernel.setArg(0, buf_in);
-	m_kernel.setArg(1, buf_out);
-	m_kernel.setArg(2, axi_read_symbol);
-	m_kernel.setArg(3, axi_read_max);
-	m_kernel.setArg(4, axi_size);
-	m_kernel.setArg(5, axi_instruction);
-	et.finish();
-
-	cl::Event event_sp;
-	et.add("Enqueue task & wait");
-	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
-	clWaitForEvents(1, (const cl_event *)&event_sp);
-	et.finish();
-	elapse_ns = (double)et.last_duration() * 1000000;
-
-	et.print();
+	// std::cout << "Configuring orderbook system" << std::endl;
+	// symbol_t axi_read_symbol = 0;
+	// int axi_size = 0;
+    // char axi_instruction = 'A'; 
+	// ap_uint<8> axi_read_max = read_max;
 
 
-    // k_handler.boot_orderbook();
-	std::cout << "Booting orderbook system" << std::endl;
-    axi_instruction = 'R'; 
+	// // Set vadd kernel arguments
+	// et.add("Set kernel arguments");
+	// m_kernel.setArg(0, buf_in);
+	// m_kernel.setArg(1, buf_out);
+	// m_kernel.setArg(2, axi_read_symbol);
+	// m_kernel.setArg(3, axi_read_max);
+	// m_kernel.setArg(4, axi_size);
+	// m_kernel.setArg(5, axi_instruction);
+	// et.finish();
 
-	// Set vadd kernel arguments
-	et.add("Set kernel arguments");
-	m_kernel.setArg(0, buf_in);
-	m_kernel.setArg(1, buf_out);
-	m_kernel.setArg(2, axi_read_symbol);
-	m_kernel.setArg(3, axi_read_max);
-	m_kernel.setArg(4, axi_size);
-	m_kernel.setArg(5, axi_instruction);
-	et.finish();
+	// cl::Event event_sp;
+	// et.add("Enqueue task & wait");
+	// m_queue.enqueueTask(m_kernel, NULL, &event_sp);
+	// clWaitForEvents(1, (const cl_event *)&event_sp);
+	// et.finish();
+	// elapse_ns = (double)et.last_duration() * 1000000;
 
-	et.add("Enqueue task & wait");
-	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
-	clWaitForEvents(1, (const cl_event *)&event_sp);
-	et.finish();
-	elapse_ns = (double)et.last_duration() * 1000000;
+	// et.print();
 
-	et.print();
+
+    k_handler.boot_orderbook(m_queue, m_kernel);
+	// std::cout << "Booting orderbook system" << std::endl;
+    // axi_instruction = 'R'; 
+
+	// // Set vadd kernel arguments
+	// et.add("Set kernel arguments");
+	// m_kernel.setArg(0, buf_in);
+	// m_kernel.setArg(1, buf_out);
+	// m_kernel.setArg(2, axi_read_symbol);
+	// m_kernel.setArg(3, axi_read_max);
+	// m_kernel.setArg(4, axi_size);
+	// m_kernel.setArg(5, axi_instruction);
+	// et.finish();
+
+	// et.add("Enqueue task & wait");
+	// m_queue.enqueueTask(m_kernel, NULL, &event_sp);
+	// clWaitForEvents(1, (const cl_event *)&event_sp);
+	// et.finish();
+	// elapse_ns = (double)et.last_duration() * 1000000;
+
+	// et.print();
 
 
     // streaming ---------------------------------------

@@ -15,7 +15,8 @@
 
 int symbol_mapping(
 	symbol_t symbol_map[STOCKS],
-	symbol_t symbol
+	symbol_t symbol,
+    bool read_req
 );
 
 

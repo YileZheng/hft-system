@@ -124,7 +124,7 @@ int main()
 		// configuration inputs
 		(symbol_t)0,
 		read_max,
-		1,
+		0,
 		// control input
 		'A'  // void, run, halt, read book, clear, config symbol map | read_max 
 	);
@@ -137,7 +137,7 @@ int main()
 		// configuration inputs
 		(symbol_t)0,
 		read_max,
-		1,
+		0,
 		// control input
 		'R'  // void, run, halt, read book, clear, config symbol map | read_max 
 	);
@@ -213,6 +213,24 @@ int main()
 			last_orderbook_line_ls[ii] = orderbook_line;
 		}
 	}
+
+	// boot the kernel
+	order_book(
+		// data
+		stream_in,
+		price_stream_out,
+		// configuration inputs
+		(symbol_t)0,
+		read_max,
+		0,
+		// control input
+		's'  // void, run, halt, read book, clear, config symbol map | read_max 
+	);
+	// std::cout << "Read symbol map from the kernel "<< std::endl;
+	// for (int i=0; i<STOCK_TEST; i++){
+	// 	printf("0x%x", ((symbol_t)price_stream_out[i]).to_uint64());
+	// }
+
 
 	ap_uint<STOCK_TEST> neof = 0-1;
 	while (neof){
