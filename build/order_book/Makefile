@@ -30,6 +30,8 @@ HOST_INCLUDE_PATH_FLAG += -I/usr/include/xrt
 HOST_LIBRARY_PATH_FLAG := -L$(SDKTARGETSYSROOT)/lib
 HOST_LIBRARY_PATH_FLAG += -L$(SDKTARGETSYSROOT)/usr/lib
 
+KERNEL_DEBUG_FLAG := --debug.chipscope $(KERNEL_NAME) --debug.protocol all
+
 KERNEL_INCLUDE_PATH_FLAG := -I$(SRCDIR)
 
 KERNEL_SRC_CPP :=  $(SRCDIR)/order_book.cpp

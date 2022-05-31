@@ -1,9 +1,9 @@
 
-[Emulation]
-debug_mode=gui
 [Debug]
-app_debug=true
+// open kernel feature
+app_debug=true          
 
+// wave form output
 profile=true
 timeline_trace=true
 data_transfer_trace=fine

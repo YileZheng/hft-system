@@ -177,10 +177,6 @@ int main(int argc, char* argv[]) {
 	cl::CommandQueue m_queue;
 	cl::Kernel 		m_kernel;
     EventTimer et;
-	cl::Buffer buf_in;
-	cl::Buffer buf_out;
-	Message* host_write_ptr;
-	price_depth* host_read_ptr;
     // Platform related operations
     std::cout << STR_INFO << "Constructing cl API Handler..." << std::endl;
     std::vector<cl::Device> devices = m_tools::get_xil_devices();
@@ -203,31 +199,38 @@ int main(int argc, char* argv[]) {
     m_kernel = cl::Kernel(program, kernel_name);
     std::cout << STR_INFO << "Kernel has been created: " << kernel_name << std::endl;
 
-    et.add("Allocating memory buffer");
-    int ret;
-    ret = posix_memalign((void **)&host_write_ptr, 4096, MAX_WRITE * sizeof(Message));
-    ret |= posix_memalign((void **)&host_read_ptr, 4096, MAX_READ * sizeof(price_depth));
-    if (ret != 0) {
-        std::cout << "Error allocating aligned memory!" << std::endl;
-        exit(1);
-    }
+    wait_for_enter("\nPress ENTER to continue after setting up ILA trigger...");
 
-    et.finish();
 
-    // Map our user-allocated buffers as OpenCL buffers using a shared
-    // host pointer
-    et.add("Map host buffers to OpenCL buffers");
-    buf_in = cl::Buffer(m_context,
-                        static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR),
-                        MAX_WRITE * sizeof(Message),
-                        host_write_ptr,
-                        NULL);
-    buf_out = cl::Buffer(m_context,
-                        static_cast<cl_mem_flags>(CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR),
-                        MAX_READ * sizeof(price_depth),
-                        host_read_ptr,
-                        NULL);
-    et.finish();
+	// cl::Buffer buf_in;
+	// cl::Buffer buf_out;
+	// Message* host_write_ptr;
+	// price_depth* host_read_ptr;
+    // et.add("Allocating memory buffer");
+    // int ret;
+    // ret = posix_memalign((void **)&host_write_ptr, 4096, MAX_WRITE * sizeof(Message));
+    // ret |= posix_memalign((void **)&host_read_ptr, 4096, MAX_READ * sizeof(price_depth));
+    // if (ret != 0) {
+    //     std::cout << "Error allocating aligned memory!" << std::endl;
+    //     exit(1);
+    // }
+
+    // et.finish();
+
+    // // Map our user-allocated buffers as OpenCL buffers using a shared
+    // // host pointer
+    // et.add("Map host buffers to OpenCL buffers");
+    // buf_in = cl::Buffer(m_context,
+    //                     static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR),
+    //                     MAX_WRITE * sizeof(Message),
+    //                     host_write_ptr,
+    //                     NULL);
+    // buf_out = cl::Buffer(m_context,
+    //                     static_cast<cl_mem_flags>(CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR),
+    //                     MAX_READ * sizeof(price_depth),
+    //                     host_read_ptr,
+    //                     NULL);
+    // et.finish();
 
     // ------------------------------------------------------------------------------------
     // Step 2: Create buffers and initialize test values
@@ -556,4 +559,9 @@ double KernelHandle::run(
 
 	et.print();
 	return elapsed_ns;
+}
+
+void wait_for_enter(const std::string &msg) {
+ std::cout << msg << std::endl;
+ std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 }
