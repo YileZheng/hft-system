@@ -22,6 +22,8 @@
       exit(EXIT_FAILURE);                                           \
     }                                       
 	
+void wait_for_enter(const std::string &msg);
+
 class KernelHandle{
 	char*    STR_ERROR   = "ERROR:   ";
 	char*    STR_FAILED  = "FAILED:  ";
