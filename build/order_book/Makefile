@@ -1,6 +1,7 @@
 ndef = $(if $(value $(1)),,$(error $(1) must be set prior to running))
 
 XF_PROJ_ROOT ?= /home/yzhengbv/00-data/git/hft-system
+#XF_PROJ_ROOT ?= /home/leon/01-git/hft-system
 #XF_PROJ_ROOT ?= $(shell bash -c 'export MK_PATH=$(MK_PATH); echo $${MK_PATH%/Getting_Started/Vitis/example/src/*}')
 
 TARGET := hw_emu
@@ -47,6 +48,7 @@ PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset
 PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/GOOG_2012-06-21_34200000_57600000_orderbook_10.csv
 PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/INTC_2012-06-21_34200000_57600000_orderbook_10.csv
 PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/MSFT_2012-06-21_34200000_57600000_orderbook_10.csv
+PACKAGE_DATA_FILES_FLAG += --package.sd_file ../transfer_back.sh
 
 
 run: build
@@ -73,14 +75,14 @@ $(BUILD_DIR)/app.exe:
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
 $(BUILD_DIR)/${KERNEL_NAME}.xo:
 #	cp $(XF_PROJ_ROOT)/proj/order_book_hls/top_orderbook_system/order_book_system.xo $(BUILD_DIR)/${KERNEL_NAME}.xo
-	v++ -c -t ${TARGET} --platform $(PLATFORM) -k ${KERNEL_NAME} --hls.pre_tcl hls_time_patch.tcl \
+	v++ -c -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg -k ${KERNEL_NAME} --hls.pre_tcl hls_time_patch.tcl \
 		 $(KERNEL_INCLUDE_PATH_FLAG) \
 		 $(KERNEL_SRC_CPP) \
 		 -o $(BUILD_DIR)/${KERNEL_NAME}.xo 
 
 xclbin: $(BUILD_DIR)/${KERNEL_NAME}.xclbin
 $(BUILD_DIR)/${KERNEL_NAME}.xclbin: $(BUILD_DIR)/${KERNEL_NAME}.xo
-	v++ -l -t ${TARGET} --platform $(PLATFORM) --config ./connectivity.cfg $(BUILD_DIR)/${KERNEL_NAME}.xo -o $(BUILD_DIR)/${KERNEL_NAME}.xclbin
+	v++ -l -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg $(BUILD_DIR)/${KERNEL_NAME}.xo -o $(BUILD_DIR)/${KERNEL_NAME}.xclbin
 
 package: $(BUILD_DIR)/package/sd_card.img
 $(BUILD_DIR)/package/sd_card.img: $(BUILD_DIR)/app.exe $(BUILD_DIR)/${KERNEL_NAME}.xclbin
