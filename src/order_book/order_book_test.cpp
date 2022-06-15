@@ -340,7 +340,7 @@ int main()
 						std::cout <<"OrderBook:    "<< s << std::endl;
 					}
 					result << s << endl;
-					answer << last_orderbook_line << endl;
+					answer << orderbook_line << endl;
 				}
 				last_orderbook_line_ls[ii] = orderbook_line;
 				std::cout<<std::endl;
