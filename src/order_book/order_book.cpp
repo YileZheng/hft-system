@@ -97,6 +97,13 @@ void order_book(
 		read_req_concat = (0x1<<index_read);
 	}
 
+	ROUTINE_SUBBOOKS_CONTROLLER:
+	for (int i=0; i<STOCKS; i++){
+#pragma HLS UNROLL
+		ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
+		books[i].subbook_controller(read_req);
+	}
+
 	// order symbol mapping
 	STREAM_IN_READ:
 	for (int i=0; i<axi_size; i++){
@@ -112,12 +119,12 @@ void order_book(
 				printf("Input symbol not found in the local symbol map, discard!!!!!!!!");
 			}
 #endif
-		ROUTINE_SUBBOOKS:
+		ROUTINE_SUBBOOKS_NEWORDER:
 		for (int i=0; i<STOCKS; i++){
 #pragma HLS UNROLL
 			transMessage transmessage_in = {ordermessage_in, {((index_msg==i)&&(!halt))?1:0}};
 			ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
-			books[i].suborder_book(transmessage_in, read_max, read_req, stream_out_buffer[i]);
+			books[i].book_maintain(transmessage_in);
 		}
 		
 	}
@@ -129,6 +136,12 @@ void order_book(
 	// 	read_map = 0;
 	// }
 	if (en_read){
+		ROUTINE_SUBBOOKS_READ:
+		for (int i=0; i<STOCKS; i++){
+	#pragma HLS UNROLL
+			ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
+			books[i].book_read(read_max, stream_out_buffer[i]);
+		}
 		READ_STREAM_BUFFER:
 		for (int i=0; i<(2*read_max)+2; i++){
 			stream_out[i] = stream_out_buffer[index_read][i];
