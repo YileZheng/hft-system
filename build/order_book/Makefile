@@ -8,7 +8,7 @@ TARGET := hw_emu
 PLATFORM := xilinx_zcu102_base_202020_1
 SRCDIR := $(XF_PROJ_ROOT)/src/order_book
 SRCDIR_TOOL := $(XF_PROJ_ROOT)/src/tools
-BUILD_DIR := $(TARGET)
+BUILD_DIR := $(shell pwd)/$(TARGET)
 EMBEDDED_EXEC_SCRIPT := run_$(TARGET).sh
 # EMBEDDED_PACKAGE_OUT := $(BUILD_DIR)package/sd_card.img
 SDKTARGETSYSROOT := $(SYSROOT)
@@ -57,7 +57,7 @@ ifeq ($(TARGET),hw)
 	echo "Copy the contents of the sd_card folder to an SD card, and run './app.exe' on the target platform."
 else
 	# cd $(BUILD_DIR) && XCL_EMULATION_MODE=$(TARGET) ./app.exe
-	cd $(BUILD_DIR)/package && ./launch_$(TARGET).sh -no-reboot -run-app $(EMBEDDED_EXEC_SCRIPT) -forward-port 1440 22
+	cd $(BUILD_DIR)/package && ./launch_$(TARGET).sh -g -no-reboot -run-app $(EMBEDDED_EXEC_SCRIPT) -forward-port 1440 22
 endif
 
 #build: host emconfig xclbin
@@ -75,14 +75,14 @@ $(BUILD_DIR)/app.exe:
 xo: $(BUILD_DIR)/${KERNEL_NAME}.xo
 $(BUILD_DIR)/${KERNEL_NAME}.xo:
 #	cp $(XF_PROJ_ROOT)/proj/order_book_hls/top_orderbook_system/order_book_system.xo $(BUILD_DIR)/${KERNEL_NAME}.xo
-	v++ -c -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg -k ${KERNEL_NAME} --hls.pre_tcl hls_time_patch.tcl \
+	cd $(BUILD_DIR) && v++ -c -g -t ${TARGET} --platform $(PLATFORM) --config ../zcu102.cfg -k ${KERNEL_NAME} --hls.pre_tcl ../hls_time_patch.tcl \
 		 $(KERNEL_INCLUDE_PATH_FLAG) \
 		 $(KERNEL_SRC_CPP) \
 		 -o $(BUILD_DIR)/${KERNEL_NAME}.xo 
 
 xclbin: $(BUILD_DIR)/${KERNEL_NAME}.xclbin
 $(BUILD_DIR)/${KERNEL_NAME}.xclbin: $(BUILD_DIR)/${KERNEL_NAME}.xo
-	v++ -l -t ${TARGET} --platform $(PLATFORM) --config ./zcu102.cfg $(BUILD_DIR)/${KERNEL_NAME}.xo -o $(BUILD_DIR)/${KERNEL_NAME}.xclbin
+	cd $(BUILD_DIR) && v++ -l -g -t ${TARGET} --platform $(PLATFORM) --config ../zcu102.cfg $(BUILD_DIR)/${KERNEL_NAME}.xo -o $(BUILD_DIR)/${KERNEL_NAME}.xclbin
 
 package: $(BUILD_DIR)/package/sd_card.img
 $(BUILD_DIR)/package/sd_card.img: $(BUILD_DIR)/app.exe $(BUILD_DIR)/${KERNEL_NAME}.xclbin
