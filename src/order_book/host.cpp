@@ -169,7 +169,7 @@ int main(int argc, char* argv[]) {
         }
 
     }
-    int MAX_WRITE = 1024, MAX_READ = 1024;
+    int MAX_WRITE = 4096, MAX_READ = 1024;
     char* kernel_name = "order_book";
     // KernelHandle k_handler(MAX_WRITE, MAX_READ, binaryFile, kernel_name);
 
@@ -185,7 +185,7 @@ int main(int argc, char* argv[]) {
     std::cout << STR_INFO << "Got devices" << std::endl;
     m_device = devices[0];
 
-    // Creating Context and Command Queue for selected Device
+    // ----------------------  Creating Context and Command Queue for selected Device  ------------------------------
     m_context = cl::Context(m_device);
     std::cout << STR_INFO << "Initialize context" << std::endl;
     m_queue = cl::CommandQueue(m_context, m_device, CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
@@ -201,56 +201,9 @@ int main(int argc, char* argv[]) {
     m_kernel = cl::Kernel(program, kernel_name);
     std::cout << STR_INFO << "Kernel has been created: " << kernel_name << std::endl;
 
+
     wait_for_enter("\nPress ENTER to continue after setting up ILA trigger...");
 
-
-	// cl::Buffer buf_in;
-	// cl::Buffer buf_out;
-	// Message* host_write_ptr;
-	// price_depth* host_read_ptr;
-    // et.add("Allocating memory buffer");
-    // int ret;
-    // ret = posix_memalign((void **)&host_write_ptr, 4096, MAX_WRITE * sizeof(Message));
-    // ret |= posix_memalign((void **)&host_read_ptr, 4096, MAX_READ * sizeof(price_depth));
-    // if (ret != 0) {
-    //     std::cout << "Error allocating aligned memory!" << std::endl;
-    //     exit(1);
-    // }
-
-    // et.finish();
-
-    // // Map our user-allocated buffers as OpenCL buffers using a shared
-    // // host pointer
-    // et.add("Map host buffers to OpenCL buffers");
-    // buf_in = cl::Buffer(m_context,
-    //                     static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR),
-    //                     MAX_WRITE * sizeof(Message),
-    //                     host_write_ptr,
-    //                     NULL);
-    // buf_out = cl::Buffer(m_context,
-    //                     static_cast<cl_mem_flags>(CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR),
-    //                     MAX_READ * sizeof(price_depth),
-    //                     host_read_ptr,
-    //                     NULL);
-    // et.finish();
-
-    // ------------------------------------------------------------------------------------
-    // Step 2: Create buffers and initialize test values
-    // ------------------------------------------------------------------------------------
-  
-    // This call will get the kernel object from program. A kernel is an 
-    // OpenCL function that is executed on the FPGA. 
-
-	// Data preparation -----------------------------
-
-    // Compute the size of array in bytes
-    // size_t size_in_bytes = DATA_SIZE * sizeof(int);
-    
-    // // Creates a vector of DATA_SIZE elements with an initial value of 10 and 32
-    // // using customized allocator for getting buffer alignment to 4k boundary
-    // std::vector<int,aligned_allocator<int>> source_a(DATA_SIZE, 10);
-    // std::vector<int,aligned_allocator<int>> source_b(DATA_SIZE, 32);
-    // std::vector<int,aligned_allocator<int>> source_results(DATA_SIZE);
 
 	messageManager messages_handler(file_dir);
     symbol_t read_symbol;
@@ -267,81 +220,134 @@ int main(int argc, char* argv[]) {
                                         {"AMD" , 0x414d442020202020},
                                         {"QCOM", 0x51434f4d20202020}};
 
+	vector<string> v_symbol = {"AAPL", "AMZN", "GOOG", "INTC", "MSFT", "SPY" , "TSLA", "NVDA", "AMD" , "QCOM"};
 
     int WRITE_LENGTH = 1, READ_LENGTH = LEVEL_TEST+2;
     vector<Message> stream_data;
     vector<price_depth> read_price;
+	vector<orderOp> ops;
     double elapse_ns;
     KernelHandle k_handler(MAX_WRITE, MAX_READ, m_context);
 
-	// axilite configuring ------------------------------
+	// axilite configuring -------------------------------------
 
     k_handler.config_orderbook(read_max, m_queue, m_kernel);
-
-	// std::cout << "Configuring orderbook system" << std::endl;
-	// symbol_t axi_read_symbol = 0;
-	// int axi_size = 0;
-    // char axi_instruction = 'A'; 
-	// ap_uint<8> axi_read_max = read_max;
-
-
-	// // Set vadd kernel arguments
-	// et.add("Set kernel arguments");
-	// m_kernel.setArg(0, buf_in);
-	// m_kernel.setArg(1, buf_out);
-	// m_kernel.setArg(2, axi_read_symbol);
-	// m_kernel.setArg(3, axi_read_max);
-	// m_kernel.setArg(4, axi_size);
-	// m_kernel.setArg(5, axi_instruction);
-	// et.finish();
-
-	// cl::Event event_sp;
-	// et.add("Enqueue task & wait");
-	// m_queue.enqueueTask(m_kernel, NULL, &event_sp);
-	// clWaitForEvents(1, (const cl_event *)&event_sp);
-	// et.finish();
-	// elapse_ns = (double)et.last_duration() * 1000000;
-
-	// et.print();
-
-
     k_handler.boot_orderbook(m_queue, m_kernel);
-	// std::cout << "Booting orderbook system" << std::endl;
-    // axi_instruction = 'R'; 
 
-	// // Set vadd kernel arguments
-	// et.add("Set kernel arguments");
-	// m_kernel.setArg(0, buf_in);
-	// m_kernel.setArg(1, buf_out);
-	// m_kernel.setArg(2, axi_read_symbol);
-	// m_kernel.setArg(3, axi_read_max);
-	// m_kernel.setArg(4, axi_size);
-	// m_kernel.setArg(5, axi_instruction);
-	// et.finish();
-
-	// et.add("Enqueue task & wait");
-	// m_queue.enqueueTask(m_kernel, NULL, &event_sp);
-	// clWaitForEvents(1, (const cl_event *)&event_sp);
-	// et.finish();
-	// elapse_ns = (double)et.last_duration() * 1000000;
-
-	// et.print();
-
-
-    // streaming ---------------------------------------
+    // initialize order books  ---------------------------------
 
     std::cout << "Initiate orderbook contents" << std::endl;
 
     std::cout << "Prepare data..." << std::endl;
     stream_data = messages_handler.init_book_messsages();
 
-    std::cout << "Stream initial orderbook levls to the kernel" <<std::endl;
+    std::cout << "Stream initial orderbook levels to the kernel" <<std::endl;
     elapse_ns = k_handler.new_orders(stream_data, m_queue, m_kernel);
+
+
+	// stream orders to kernel ---------------------------------
+
+	// burst order feeding
+
+	double elapse_ns_total = 0, num_orders = 0, elapse_read = 0, num_read = 0;
+	int order_len = 4096, shot = 10;      // should not exceed MAX_WRITE
+	bool match;
+
+	while (shot--){
+		stream_data = messages_handler.generate_messages(order_len, ops);
+    	elapse_ns = k_handler.new_orders(stream_data, m_queue, m_kernel);
+		std::cout << "Burst order length: " << stream_data.size() << " - elasped: " << elapse_ns << " ns"<< std::endl;
+		elapse_ns_total += elapse_ns;
+		num_orders += stream_data.size();
+		
+		read_symbol = symbol2hex[v_symbol[shot%STOCK_TEST]];
+		std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
+		elapse_ns = k_handler.read_orderbook(read_price, read_symbol, m_queue, m_kernel);
+		std::cout << "Read orderbook length order length: " << read_max << " - elasped: " << elapse_ns << " ns"<< std::endl;
+		match = messages_handler.check_resultbook(read_price, read_symbol);
+		num_read ++;
+		elapse_read += elapse_ns;
+		if (!match){
+			std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+		}
+	}
+	double time_burst = (elapse_ns_total/num_orders);
+	std::cout << "Average order processing time [burst]: " << time_burst << " ns - for " << num_orders << " order messages" << std::endl;
+
+
+	// single shoot order feeding
+
+	elapse_ns_total = 0;
+	num_orders = 0;
+	order_len = 4096, shot = 10;
+	order_len = order_len*shot;
+	while (order_len--){
+		stream_data = messages_handler.generate_messages(1, ops);
+		elapse_ns = k_handler.new_orders(stream_data, m_queue, m_kernel);
+		std::cout << "Single issue order length: " << stream_data.size() << " - elasped: " << elapse_ns << " ns"<< std::endl;
+		elapse_ns_total += elapse_ns;
+		num_orders += stream_data.size();
+
+		if (order_len%100 == 0){
+			read_symbol = symbol2hex[v_symbol[(order_len/100%STOCK_TEST)]];
+			std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
+			elapse_ns = k_handler.read_orderbook(read_price, read_symbol, m_queue, m_kernel);
+			std::cout << "Read orderbook length order length: " << read_max << " - elasped: " << elapse_ns << " ns"<< std::endl;
+			match = messages_handler.check_resultbook(read_price, read_symbol);
+			num_read ++;
+			elapse_read += elapse_ns;
+			if (!match){
+				std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+			}
+		}
+	}
+	double time_single = (elapse_ns_total/num_orders);
+	std::cout << "Average order processing time [single]: " << time_single << " ns - for " << num_orders << " order messages" << std::endl;
+	
+
 
     read_symbol = symbol2hex["AAPL"];
     std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
     elapse_ns = k_handler.read_orderbook(read_price, read_symbol, m_queue, m_kernel);
-    auto match = messages_handler.check_resultbook(read_price, read_symbol);
+	std::cout << "Read orderbook length order length: " << read_max << " - elasped: " << elapse_ns << " ns"<< std::endl;
+    match = messages_handler.check_resultbook(read_price, read_symbol);
+	num_read ++;
+	elapse_read += elapse_ns;
+	if (!match){
+		std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+	}
+	
+    read_symbol = symbol2hex["AMZN"];
+    std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
+    elapse_ns = k_handler.read_orderbook(read_price, read_symbol, m_queue, m_kernel);
+	std::cout << "Read orderbook length order length: " << read_max << " - elasped: " << elapse_ns << " ns"<< std::endl;
+    match = messages_handler.check_resultbook(read_price, read_symbol);
+	num_read ++;
+	elapse_read += elapse_ns;
+	if (!match){
+		std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+	}
+	
+    read_symbol = symbol2hex["GOOG"];
+    std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
+    elapse_ns = k_handler.read_orderbook(read_price, read_symbol, m_queue, m_kernel);
+	std::cout << "Read orderbook length order length: " << read_max << " - elasped: " << elapse_ns << " ns"<< std::endl;
+    match = messages_handler.check_resultbook(read_price, read_symbol);
+	num_read ++;
+	elapse_read += elapse_ns;
+	if (!match){
+		std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+	}
+
+	double time_read = elapse_read/num_read;
+	std::cout << "Average orderbook reading time: " << time_read << " ns - for " << num_read << " order messages" << std::endl;
+
+	std::cout << ">> Average order processing time [burst]: " << time_burst << " ns" << std::endl;
+	std::cout << ">> Average order processing time [single]: " << time_single << " ns" << std::endl;
+	std::cout << ">> Average orderbook reading time: " << time_read << " ns" << std::endl;
+
+	match = messages_handler.final_check();
+	std::cout << ">> Final check: " << match << std::endl;
 
     return (match ? EXIT_FAILURE :  EXIT_SUCCESS);
 }

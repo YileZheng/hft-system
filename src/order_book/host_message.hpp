@@ -111,7 +111,7 @@ class messageManager{
 	public:
 
 	vector<Message> init_book_messsages();
-	vector<Message> generate_messages(int num);
+	vector<Message> generate_messages(int num, vector<orderOp> v_orderop);
 	bool check_resultbook(vector<price_depth> price_stream_out, symbol_t target_symbol);
 	bool final_check();
 	string get_true_orderbook(symbol_t target_symbol);

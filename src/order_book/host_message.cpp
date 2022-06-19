@@ -79,7 +79,8 @@ vector<Message> messageManager::init_book_messsages(){
 // when not running to the EOF, output length should be <num>
 // Otherwise, less than or equal to <num> 
 vector<Message> messageManager::generate_messages(
-	int num // number of order messages to retrive
+	int num,  // number of order messages to retrive
+	vector<orderOp> v_orderop
 ){
 	vector<Message> out_list;
 	string pr, qty, oid, tstmp, ab, op;
@@ -88,6 +89,7 @@ vector<Message> messageManager::generate_messages(
 	Message input_in;
 	string line, orderbook_line;
 	vector<string> line_split;
+	v_orderop.clear();
 	while (neof){
 		id++;
 		int ii = id%STOCK_TEST;
@@ -136,6 +138,7 @@ vector<Message> messageManager::generate_messages(
 			input_in.operation = odop;
 			input_in.side = bid;
 			out_list.push_back(input_in);
+			v_orderop.push_back(odop);
 			
 			last_orderbook_line_ls[ii] = orderbook_line;
 			std::cout<<std::endl;
@@ -170,7 +173,7 @@ bool messageManager::check_resultbook(
 		price_read = price_depth_table[0];
 		price_depth_table.erase(price_depth_table.begin());
 
-		std::cout <<"Price: " << price_read.price << " Size: " << price_read.size << std::endl;
+		std::cout <<"Price: " << price_read.price.to_float() << " Size: " << price_read.size << std::endl;
 		if (price_read.price != 0){
 			cur_v.push_back(price_read);
 		}else {

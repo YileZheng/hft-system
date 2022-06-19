@@ -103,6 +103,7 @@ void EventTimer::print(int id)
         }
     }
     std::cout.flags(flags);
+    EventTimer::clear();
 }
 
 float EventTimer::last_duration(){
