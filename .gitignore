@@ -41,7 +41,8 @@
 
 # Environment Configuration
 .vscode/c_cpp_properties.json
-.vscode
+.vscode/
+.vscode/*
 
 # large files
 *.zip
@@ -56,3 +57,4 @@
 */sw_emu/*
 */hw/*
 data/**
+*.DS_Store
