@@ -268,7 +268,7 @@ int main(int argc, char* argv[]) {
 		num_read ++;
 		elapse_read += elapse_ns;
 		if (!match){
-			std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+			std::cout << "[ERROR] - Orderbook value false; "  << std::endl;
 		}
 	}
 	double time_burst = (elapse_ns_total/num_orders);
@@ -297,7 +297,7 @@ int main(int argc, char* argv[]) {
 			num_read ++;
 			elapse_read += elapse_ns;
 			if (!match){
-				std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+				std::cout << "[ERROR] - Orderbook value false; "  << std::endl;
 			}
 		}
 	}
@@ -314,7 +314,7 @@ int main(int argc, char* argv[]) {
 	num_read ++;
 	elapse_read += elapse_ns;
 	if (!match){
-		std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+		std::cout << "[ERROR] - Orderbook value false; "  << std::endl;
 	}
 	
     read_symbol = symbol2hex["AMZN"];
@@ -325,7 +325,7 @@ int main(int argc, char* argv[]) {
 	num_read ++;
 	elapse_read += elapse_ns;
 	if (!match){
-		std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+		std::cout << "[ERROR] - Orderbook value false; "  << std::endl;
 	}
 	
     read_symbol = symbol2hex["GOOG"];
@@ -336,7 +336,7 @@ int main(int argc, char* argv[]) {
 	num_read ++;
 	elapse_read += elapse_ns;
 	if (!match){
-		std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+		std::cout << "[ERROR] - Orderbook value false; "  << std::endl;
 	}
 
 	double time_read = elapse_read/num_read;
