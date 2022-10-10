@@ -8,9 +8,11 @@
 #define __SUBORDER_BOOK_H__
 //#define __DEBUG__
 
-#define LAST_CLOSE 585.3
-#define AS_UNIT 0.01
-#define BOOK_SIZE (int)(LAST_CLOSE/10/AS_UNIT*2)
+#include "profile.hpp"
+
+//#define LAST_CLOSE 585.3
+//#define AS_UNIT 0.01
+//#define BOOK_SIZE (int)(LAST_CLOSE/10/AS_UNIT*2)
 
 
 void dut_suborder_book(
