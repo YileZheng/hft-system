@@ -39,7 +39,7 @@ class KernelHandle{
 	price_depth* host_read_ptr;
 
     int MAX_WRITE, MAX_READ;
-    int read_lvls;	
+    int read_lvls = 10;	
 	
 	public:
 	KernelHandle(int max_write, int max_read, cl::Context& m_context){
@@ -111,9 +111,7 @@ class KernelHandle{
 		// m_queue.finish();
 	}
 
-    double config_orderbook(ap_uint<8> axi_read_max, cl::CommandQueue& m_queue, cl::Kernel& m_kernel);
-    double boot_orderbook(cl::CommandQueue& m_queue, cl::Kernel& m_kernel);
-    double read_orderbook(vector<price_depth>& data_out, symbol_t axi_read_symbol, cl::CommandQueue& m_queue, cl::Kernel& m_kernel);
+    double read_orderbook(vector<Message>& data_in, vector<price_depth>& data_out, cl::CommandQueue& m_queue, cl::Kernel& m_kernel);
     double new_orders(vector<Message>& data_in, cl::CommandQueue& m_queue, cl::Kernel& m_kernel);
     double run(
 	    // data
@@ -121,11 +119,10 @@ class KernelHandle{
 	    vector<price_depth>& data_out,
 
 	    // configuration inputs
-	    symbol_t axi_read_symbol,
+	    symbol_t axi_read_req,
 	    ap_uint<8> axi_read_max,
 
 	    // control input
-	    char axi_instruction, 
 		cl::CommandQueue& m_queue, cl::Kernel& m_kernel
     );
 
@@ -170,7 +167,7 @@ int main(int argc, char* argv[]) {
 
     }
     int MAX_WRITE = 4096, MAX_READ = 1024;
-    char* kernel_name = "order_book";
+    char* kernel_name = "suborder_book";
     // KernelHandle k_handler(MAX_WRITE, MAX_READ, binaryFile, kernel_name);
 
     std::string xclbin_path(binaryFile);
@@ -229,11 +226,6 @@ int main(int argc, char* argv[]) {
     double elapse_ns;
     KernelHandle k_handler(MAX_WRITE, MAX_READ, m_context);
 
-	// axilite configuring -------------------------------------
-
-    k_handler.config_orderbook(read_max, m_queue, m_kernel);
-    k_handler.boot_orderbook(m_queue, m_kernel);
-
     // initialize order books  ---------------------------------
 
     std::cout << "Initiate orderbook contents" << std::endl;
@@ -260,9 +252,10 @@ int main(int argc, char* argv[]) {
 		elapse_ns_total += elapse_ns;
 		num_orders += stream_data.size();
 		
-		read_symbol = symbol2hex[v_symbol[shot%STOCK_TEST]];
-		std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
-		elapse_ns = k_handler.read_orderbook(read_price, read_symbol, m_queue, m_kernel);
+		read_symbol = symbol2hex[v_symbol[0]];
+		stream_data = messages_handler.generate_messages(1, ops);
+		std::cout << "Read orderbook from system " <<std::endl;
+		elapse_ns = k_handler.read_orderbook(stream_data, read_price, m_queue, m_kernel);
 		std::cout << "Read orderbook length order length: " << read_max << " - elasped: " << elapse_ns << " ns"<< std::endl;
 		match = messages_handler.check_resultbook(read_price, read_symbol);
 		num_read ++;
@@ -289,9 +282,10 @@ int main(int argc, char* argv[]) {
 		num_orders += stream_data.size();
 
 		if (order_len%100 == 0){
-			read_symbol = symbol2hex[v_symbol[(order_len/100%STOCK_TEST)]];
-			std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
-			elapse_ns = k_handler.read_orderbook(read_price, read_symbol, m_queue, m_kernel);
+			read_symbol = symbol2hex[v_symbol[0]];
+			std::cout << "Read orderbook from system " <<std::endl;
+			stream_data = messages_handler.generate_messages(1, ops);
+			elapse_ns = k_handler.read_orderbook(stream_data, read_price, m_queue, m_kernel);
 			std::cout << "Read orderbook length order length: " << read_max << " - elasped: " << elapse_ns << " ns"<< std::endl;
 			match = messages_handler.check_resultbook(read_price, read_symbol);
 			num_read ++;
@@ -354,92 +348,30 @@ int main(int argc, char* argv[]) {
 
 
 
-
-
-double KernelHandle::config_orderbook(
-	ap_uint<8> axi_read_max,
-
-	cl::CommandQueue& m_queue, cl::Kernel& m_kernel 
-){
-	std::cout << "Configuring orderbook system" << std::endl;
-	symbol_t axi_read_symbol = 0;
-	int axi_size = 0;
-    char axi_instruction = 'A'; 
-
-	read_lvls = axi_read_max;
-
-	// Set vadd kernel arguments
-	et.add("Set kernel arguments");
-	m_kernel.setArg(0, buf_in);
-	m_kernel.setArg(1, buf_out);
-	m_kernel.setArg(2, axi_read_symbol);
-	m_kernel.setArg(3, axi_read_max);
-	m_kernel.setArg(4, axi_size);
-	m_kernel.setArg(5, axi_instruction);
-	et.finish();
-
-	cl::Event event_sp;
-	et.add("Enqueue task & wait");
-	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
-	clWaitForEvents(1, (const cl_event *)&event_sp);
-	et.finish();
-	double elapsed_ns = (double)et.last_duration() * 1000000;
-
-	et.print();
-	return elapsed_ns;
-}
-
-
-double KernelHandle::boot_orderbook(
-	cl::CommandQueue& m_queue, cl::Kernel& m_kernel
-){
-	std::cout << "Booting orderbook system" << std::endl;
-	symbol_t axi_read_symbol = 0;
-	ap_uint<8> axi_read_max = read_lvls;
-	int axi_size = 0;
-    char axi_instruction = 'R'; 
-
-	// Set vadd kernel arguments
-	et.add("Set kernel arguments");
-	m_kernel.setArg(0, buf_in);
-	m_kernel.setArg(1, buf_out);
-	m_kernel.setArg(2, axi_read_symbol);
-	m_kernel.setArg(3, axi_read_max);
-	m_kernel.setArg(4, axi_size);
-	m_kernel.setArg(5, axi_instruction);
-	et.finish();
-
-	cl::Event event_sp;
-	et.add("Enqueue task & wait");
-	m_queue.enqueueTask(m_kernel, NULL, &event_sp);
-	clWaitForEvents(1, (const cl_event *)&event_sp);
-	et.finish();
-	double elapsed_ns = (double)et.last_duration() * 1000000;
-
-	et.print();
-	return elapsed_ns;
-}
-
-
 double KernelHandle::read_orderbook(
+	// data
+	vector<Message>& data_in,
 	vector<price_depth>& data_out, 
-	symbol_t axi_read_symbol,
 
 	cl::CommandQueue& m_queue, cl::Kernel& m_kernel 
 ){
 	std::cout << "Read orderbook from kernel" << std::endl;
 	ap_uint<8> axi_read_max = read_lvls;
-	int axi_size = 0;
-    char axi_instruction = 'r'; 
+	int axi_size = data_in.size();
+
+	//setting input data
+	for(int i = 0 ; i < axi_size; i++){
+		host_write_ptr[i] = data_in[i];
+     	std::cout<< "Send message - Symbol: " << std::string((char*)&host_write_ptr[i].symbol, 8) <<" OrderID: "<<host_write_ptr[i].orderID << " Side: " <<host_write_ptr[i].side<<" Type: "<<host_write_ptr[i].operation<<" Price: "<< host_write_ptr[i].price <<" Volume: "<< host_write_ptr[i].size<<std::endl;
+	}
 
 	// Set vadd kernel arguments
 	et.add("Set kernel arguments");
 	m_kernel.setArg(0, buf_in);
 	m_kernel.setArg(1, buf_out);
-	m_kernel.setArg(2, axi_read_symbol);
+	m_kernel.setArg(2, 1);
 	m_kernel.setArg(3, axi_read_max);
 	m_kernel.setArg(4, axi_size);
-	m_kernel.setArg(5, axi_instruction);
 	et.finish();
 
 	cl::Event event_sp;
@@ -472,9 +404,7 @@ double KernelHandle::new_orders(
 	cl::CommandQueue& m_queue, cl::Kernel& m_kernel
 ){
 	std::cout << "Feed new orders to orderbook system" << std::endl;
-	symbol_t axi_read_symbol = 0;
 	ap_uint<8> axi_read_max = read_lvls;
-    char axi_instruction = 'v'; 
 	int axi_size = data_in.size();
 
 	//setting input data
@@ -487,10 +417,9 @@ double KernelHandle::new_orders(
 	et.add("Set kernel arguments");
 	m_kernel.setArg(0, buf_in);
 	m_kernel.setArg(1, buf_out);
-	m_kernel.setArg(2, axi_read_symbol);
+	m_kernel.setArg(2, 0);
 	m_kernel.setArg(3, axi_read_max);
 	m_kernel.setArg(4, axi_size);
-	m_kernel.setArg(5, axi_instruction);
 	et.finish();
 
 	cl::Event event_sp;
@@ -515,11 +444,8 @@ double KernelHandle::run(
 	vector<price_depth>& data_out,
 
 	// configuration inputs
-	symbol_t axi_read_symbol,
+	ap_uint<1> axi_read_req,
 	ap_uint<8> axi_read_max,
-
-	// control input
-	char axi_instruction, 
 
 	cl::CommandQueue& m_queue, cl::Kernel& m_kernel
 ){
@@ -534,10 +460,9 @@ double KernelHandle::run(
 	et.add("Set kernel arguments");
 	m_kernel.setArg(0, buf_in);
 	m_kernel.setArg(1, buf_out);
-	m_kernel.setArg(2, axi_read_symbol);
+	m_kernel.setArg(2, axi_read_req);
 	m_kernel.setArg(3, axi_read_max);
 	m_kernel.setArg(4, axi_size);
-	m_kernel.setArg(5, axi_instruction);
 	et.finish();
 
 	cl::Event event_sp;
@@ -553,7 +478,7 @@ double KernelHandle::run(
 	double elapsed_ns = (double)et.last_duration() * 1000000;
 
 	// Migrate memory back from device
-	if (axi_instruction == 'r'){
+	if (axi_read_req){
 		et.add("Read back computation results");
 		m_queue.enqueueMigrateMemObjects({buf_out}, CL_MIGRATE_MEM_OBJECT_HOST, NULL, &event_sp);
 		clWaitForEvents(1, (const cl_event *)&event_sp);

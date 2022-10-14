@@ -68,11 +68,13 @@ class messageManager{
 
 	// files
 	string message_path[STOCK_TEST] =  {{"/AAPL_2012-06-21_34200000_57600000_message_10.csv"},
-										{"/AMZN_2012-06-21_34200000_57600000_message_10.csv"},
-										{"/GOOG_2012-06-21_34200000_57600000_message_10.csv"}};
+										// {"/AMZN_2012-06-21_34200000_57600000_message_10.csv"},
+										// {"/GOOG_2012-06-21_34200000_57600000_message_10.csv"}
+										};
 	string orderbook_path[STOCK_TEST] ={{"/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv"},
-										{"/AMZN_2012-06-21_34200000_57600000_orderbook_10.csv"},
-										{"/GOOG_2012-06-21_34200000_57600000_orderbook_10.csv"}};
+										// {"/AMZN_2012-06-21_34200000_57600000_orderbook_10.csv"},
+										// {"/GOOG_2012-06-21_34200000_57600000_orderbook_10.csv"}
+										};
 	string result_path{"result.csv"};
 	string answer_path{"answer.csv"};
 	
@@ -112,6 +114,7 @@ class messageManager{
 
 	vector<Message> init_book_messsages();
 	vector<Message> generate_messages(int num, vector<orderOp> v_orderop);
+	vector<Message> generate_messages_classified(int num, vector<orderOp> v_orderop);
 	bool check_resultbook(vector<price_depth> price_stream_out, symbol_t target_symbol);
 	bool final_check();
 	string get_true_orderbook(symbol_t target_symbol);
