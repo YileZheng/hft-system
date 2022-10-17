@@ -119,7 +119,7 @@ class KernelHandle{
 	    vector<price_depth>& data_out,
 
 	    // configuration inputs
-	    symbol_t axi_read_req,
+	    ap_uint<1> axi_read_req,
 	    ap_uint<8> axi_read_max,
 
 	    // control input
@@ -130,8 +130,9 @@ class KernelHandle{
 
 
 char symbols[STOCK_TEST][8] =  {{' ',' ',' ',' ','L','P', 'A','A'},
-								{' ',' ',' ',' ', 'N','Z','M','A'},
-								{' ',' ',' ',' ', 'G','O','O','G'}};
+								// {' ',' ',' ',' ', 'N','Z','M','A'},
+								// {' ',' ',' ',' ', 'G','O','O','G'}
+								};
 // config
 symbol_t *symbol_map=(symbol_t*)symbols;
 
@@ -242,7 +243,7 @@ int main(int argc, char* argv[]) {
 	// burst order feeding
 
 	double elapse_ns_total = 0, num_orders = 0, elapse_read = 0, num_read = 0;
-	int order_len = 4096, shot = 10;      // should not exceed MAX_WRITE
+	int order_len = 1024, shot = 10;      // should not exceed MAX_WRITE
 	bool match;
 
 	while (shot--){
@@ -261,7 +262,7 @@ int main(int argc, char* argv[]) {
 		num_read ++;
 		elapse_read += elapse_ns;
 		if (!match){
-			std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+			std::cout << "[ERROR] - Orderbook value false; "  << std::endl;
 		}
 	}
 	double time_burst = (elapse_ns_total/num_orders);
@@ -272,7 +273,7 @@ int main(int argc, char* argv[]) {
 
 	elapse_ns_total = 0;
 	num_orders = 0;
-	order_len = 4096, shot = 10;
+	order_len = 1024, shot = 10;
 	order_len = order_len*shot;
 	while (order_len--){
 		stream_data = messages_handler.generate_messages(1, ops);
@@ -291,46 +292,23 @@ int main(int argc, char* argv[]) {
 			num_read ++;
 			elapse_read += elapse_ns;
 			if (!match){
-				std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+				std::cout << "[ERROR] - Orderbook value false; "  << std::endl;
 			}
 		}
 	}
 	double time_single = (elapse_ns_total/num_orders);
 	std::cout << "Average order processing time [single]: " << time_single << " ns - for " << num_orders << " order messages" << std::endl;
 	
-
-
-    read_symbol = symbol2hex["AAPL"];
-    std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
-    elapse_ns = k_handler.read_orderbook(read_price, read_symbol, m_queue, m_kernel);
-	std::cout << "Read orderbook length order length: " << read_max << " - elasped: " << elapse_ns << " ns"<< std::endl;
-    match = messages_handler.check_resultbook(read_price, read_symbol);
-	num_read ++;
-	elapse_read += elapse_ns;
-	if (!match){
-		std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
-	}
 	
-    read_symbol = symbol2hex["AMZN"];
-    std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
-    elapse_ns = k_handler.read_orderbook(read_price, read_symbol, m_queue, m_kernel);
+	std::cout << "Read orderbook from system " <<std::endl;
+	stream_data = messages_handler.generate_messages(1, ops);
+	elapse_ns = k_handler.read_orderbook(stream_data, read_price, m_queue, m_kernel);
 	std::cout << "Read orderbook length order length: " << read_max << " - elasped: " << elapse_ns << " ns"<< std::endl;
     match = messages_handler.check_resultbook(read_price, read_symbol);
 	num_read ++;
 	elapse_read += elapse_ns;
 	if (!match){
-		std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
-	}
-	
-    read_symbol = symbol2hex["GOOG"];
-    std::cout << "Read orderbook from system for symbol: " << string((char*)&read_symbol, 8) <<std::endl;
-    elapse_ns = k_handler.read_orderbook(read_price, read_symbol, m_queue, m_kernel);
-	std::cout << "Read orderbook length order length: " << read_max << " - elasped: " << elapse_ns << " ns"<< std::endl;
-    match = messages_handler.check_resultbook(read_price, read_symbol);
-	num_read ++;
-	elapse_read += elapse_ns;
-	if (!match){
-		std::cout << "[ERROR] - Orderbook value false; "  << std:endl;
+		std::cout << "[ERROR] - Orderbook value false; "  << std::endl;
 	}
 
 	double time_read = elapse_read/num_read;
@@ -357,6 +335,7 @@ double KernelHandle::read_orderbook(
 ){
 	std::cout << "Read orderbook from kernel" << std::endl;
 	ap_uint<8> axi_read_max = read_lvls;
+	ap_uint<1> axi_read_req = 1;
 	int axi_size = data_in.size();
 
 	//setting input data
@@ -369,7 +348,7 @@ double KernelHandle::read_orderbook(
 	et.add("Set kernel arguments");
 	m_kernel.setArg(0, buf_in);
 	m_kernel.setArg(1, buf_out);
-	m_kernel.setArg(2, 1);
+	m_kernel.setArg(2, axi_read_req);
 	m_kernel.setArg(3, axi_read_max);
 	m_kernel.setArg(4, axi_size);
 	et.finish();
@@ -405,6 +384,7 @@ double KernelHandle::new_orders(
 ){
 	std::cout << "Feed new orders to orderbook system" << std::endl;
 	ap_uint<8> axi_read_max = read_lvls;
+	ap_uint<1> axi_read_req = 0;
 	int axi_size = data_in.size();
 
 	//setting input data
@@ -417,7 +397,7 @@ double KernelHandle::new_orders(
 	et.add("Set kernel arguments");
 	m_kernel.setArg(0, buf_in);
 	m_kernel.setArg(1, buf_out);
-	m_kernel.setArg(2, 0);
+	m_kernel.setArg(2, axi_read_req);
 	m_kernel.setArg(3, axi_read_max);
 	m_kernel.setArg(4, axi_size);
 	et.finish();

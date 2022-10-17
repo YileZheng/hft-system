@@ -29,7 +29,8 @@ void suborder_book(
 #pragma HLS INTERFACE s_axilite port=stream_out bundle=control
 
 
-    static hls::stream<price_depth> feed_stream_out;
+    // static 
+	hls::stream<price_depth, 50> feed_stream_out;
     ap_uint<1> read_req = axi_read_req;
 	Message message_in;
 	orderMessage ordermessage_in;
@@ -37,9 +38,6 @@ void suborder_book(
 	// order symbol mapping
 	STREAM_IN_READ:
 	for (int i=0; i<axi_size; i++){
-        if (read_req){
-            read_req = 0;
-        }
 		message_in = stream_in[i];
 		ordermessage_in.order_info.orderID = message_in.orderID;
 		ordermessage_in.order_info.size = message_in.size;
@@ -53,11 +51,21 @@ void suborder_book(
             read_req,
             feed_stream_out
         );
+        if (read_req){
+            read_req = 0;
+        }
 	}
     
-    int read_cnt = 0;
-    while ( !feed_stream_out.empty()){
-        stream_out[read_cnt++] = feed_stream_out.read();
-    }
+
+	if (axi_read_req) {
+		for (int i=0; i<2*axi_read_max+2; i++){
+			stream_out[i] = feed_stream_out.read();
+		}
+	}
+
+    // int read_cnt = 0;
+    // while ( ~feed_stream_out.empty()  ){
+    //     stream_out[read_cnt++] = feed_stream_out.read();
+    // }
 
 }

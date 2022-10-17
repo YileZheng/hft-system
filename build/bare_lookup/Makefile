@@ -23,6 +23,7 @@ HOST_SRC_CPP += $(SRCDIR_TOOL)/event_timer.cpp
 HOST_SRC_CPP += $(SRCDIR_TOOL)/xcl2.cpp
 
 HOST_INCLUDE_PATH_FLAG := -I$(TESTSRCDIR)
+HOST_INCLUDE_PATH_FLAG += -I$(SRCDIR)
 HOST_INCLUDE_PATH_FLAG += -I$(SRCDIR_TOOL)
 HOST_INCLUDE_PATH_FLAG += -I$(SDKTARGETSYSROOT)/usr/include/xrt
 HOST_INCLUDE_PATH_FLAG += -I$(XF_PROJ_ROOT)/include
@@ -41,17 +42,17 @@ KERNEL_SRC_CPP :=  $(SRCDIR)/suborder_book.cpp
 KERNEL_SRC_CPP +=  $(TESTSRCDIR)/suborderbook_wrapper.cpp
 KERNEL_SRC_CPP +=  $(SRCDIR)/utils.cpp
 
-PACKAGE_DATA_FILES_FLAG := --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/AAPL_2012-06-21_34200000_57600000_message_10.csv
+PACKAGE_DATA_FILES_FLAG := --package.sd_file $(XF_PROJ_ROOT)/data/lobster/AAPL_2012-06-21_34200000_57600000_message_10.csv
 # PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/AMZN_2012-06-21_34200000_57600000_message_10.csv
 # PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/GOOG_2012-06-21_34200000_57600000_message_10.csv
 # PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/INTC_2012-06-21_34200000_57600000_message_10.csv
 # PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/MSFT_2012-06-21_34200000_57600000_message_10.csv
-PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv
+PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv
 # PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/AMZN_2012-06-21_34200000_57600000_orderbook_10.csv
 # PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/GOOG_2012-06-21_34200000_57600000_orderbook_10.csv
 # PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/INTC_2012-06-21_34200000_57600000_orderbook_10.csv
 # PACKAGE_DATA_FILES_FLAG += --package.sd_file $(XF_PROJ_ROOT)/data/lobster/subset/MSFT_2012-06-21_34200000_57600000_orderbook_10.csv
-PACKAGE_DATA_FILES_FLAG += --package.sd_file ../transfer_back.sh
+# PACKAGE_DATA_FILES_FLAG += --package.sd_file ../transfer_back.sh
 
 
 run: build

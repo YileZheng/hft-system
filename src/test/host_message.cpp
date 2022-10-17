@@ -7,7 +7,6 @@
 #define UNIT 0.01
 #define SLOTSIZE 10
 #define READ_MAX 10
-#define STOCK_TEST 3
 
 
 void messageManager::close_files(){
