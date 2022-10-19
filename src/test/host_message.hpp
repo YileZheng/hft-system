@@ -100,7 +100,7 @@ class messageManager{
 	// caches
 	last_manager* last_ls[STOCK_TEST];
 	long int cur_msg_time_ls[STOCK_TEST];
-	string last_orderbook_line_ls[STOCK_TEST], cur_msg_line_ls[STOCK_TEST];
+	string last_orderbook_line_ls[STOCK_TEST], llast_orderbook_line_ls[STOCK_TEST], cur_msg_line_ls[STOCK_TEST];
 	ifstream message_ls[STOCK_TEST],  orderbook_ls[STOCK_TEST];
 	ofstream result, answer;
 

@@ -139,6 +139,8 @@ vector<Message> messageManager::generate_messages(
 			out_list.push_back(input_in);
 			v_orderop.push_back(odop);
 			
+
+			llast_orderbook_line_ls[ii] = last_orderbook_line_ls[ii];
 			last_orderbook_line_ls[ii] = orderbook_line;
 			std::cout<<std::endl;
 			
@@ -182,7 +184,8 @@ bool messageManager::check_resultbook(
 	}
 
 	int loc = get_symbol_loc(target_symbol);
-	string last_orderbook_line = last_orderbook_line_ls[loc];
+	// string last_orderbook_line = last_orderbook_line_ls[loc];
+	string last_orderbook_line = llast_orderbook_line_ls[loc];
 	string s = concat_string(resultbook, string(","), level);
 	if (s.compare(last_orderbook_line) != 0){
 		std::cout <<"Symbol: " <<symbol_map[loc]<<": Result orderbook not match !!!!!!!!" <<std::endl;

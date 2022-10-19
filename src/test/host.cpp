@@ -282,7 +282,7 @@ int main(int argc, char* argv[]) {
 		elapse_ns_total += elapse_ns;
 		num_orders += stream_data.size();
 
-		if (order_len%100 == 0){
+		if (order_len%1000 == 0){
 			read_symbol = symbol2hex[v_symbol[0]];
 			std::cout << "Read orderbook from system " <<std::endl;
 			stream_data = messages_handler.generate_messages(1, ops);
