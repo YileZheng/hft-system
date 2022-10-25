@@ -2,12 +2,8 @@
 //#include <gmp.h>
 //#include <mpfr.h>
 #include "suborder_book.hpp"
+#include "profile.hpp"
 
-
-#define AS_UNIT 0.01
-#define AS_SLOTSIZE 10
-#define RANGE 1000
-#define CHAIN_LEVELS 200
 
 
 void dut_suborder_book(

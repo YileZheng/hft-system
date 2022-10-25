@@ -1,4 +1,4 @@
-LAST_CLOSE = 585.3
+LAST_CLOSE = 27.52
 AS_UNIT = 0.01
 
 if __name__ == "__main__":

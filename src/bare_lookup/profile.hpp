@@ -1,4 +1,4 @@
 
-#define LAST_CLOSE 585.3
+#define LAST_CLOSE 27.52
 #define AS_UNIT 0.01
-#define BOOK_SIZE 11705
+#define BOOK_SIZE 550
