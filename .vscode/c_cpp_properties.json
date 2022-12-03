@@ -6,7 +6,9 @@
         "${workspaceFolder}/**",
         "${workspaceFolder}\\**",
         "${workspaceFolder}\\src\\order_book\\**",
+        "${workspaceFolder}\\src\\bare_lookup\\**",
         "C:\\Users\\Leons\\git\\hft-system\\src\\order_book",
+        "C:\\Users\\Leons\\git\\hft-system\\src\\bare_lookup",
         "C:\\Users\\Leons\\git\\HLS\\include"
       ],
       "compilerPath": "C:/msys64/mingw64/bin/gcc.exe",
