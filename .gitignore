@@ -39,22 +39,24 @@
 **/proj
 */solution1
 
+# python 
+**/ipynb_checkpoints/
+
 # Environment Configuration
-.vscode/c_cpp_properties.json
 .vscode/
-.vscode/*
 
 # large files
 *.zip
 *.csv
+*.txt
 
 # debug
 *demo*
 
 *.log
-*/_x/*
-*/hw_emu/*
-*/sw_emu/*
+**/_x/
+**/hw_emu/
+**/sw_emu/
 */hw/*
 data/**
 *.DS_Store
