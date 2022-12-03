@@ -1,7 +1,7 @@
 LAST_CLOSE = 585.33
 AS_UNIT = 0.01
 
-RANGE = 20
+RANGE = 1000
 CHAIN_LEVELS = 200
 
 if __name__ == "__main__":

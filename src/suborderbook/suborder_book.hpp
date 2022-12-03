@@ -31,7 +31,6 @@ class SubOrderBook{
 
 	// hole management
 	hls::stream<link_t, CHAIN_LEVELS> hole_fifo;//("hole fifo");
-	hls::stream<orderMessage, 30> order_message_fifo;//("order fifo");		//TODO
 	link_t stack_top = RANGE*2;
 
 	// control signal
@@ -107,11 +106,11 @@ class SubOrderBook{
 
 	// orderbook update
 	void book_maintain(
-		transMessage trans_message
+		orderMessage Order_message
 	);
 
 	void suborderbook(
-		transMessage trans_message,
+		orderMessage Order_message,
 		ap_uint<8> read_max,
 		ap_uint<1> req_read_in,
 		hls::stream<price_depth> &feed_stream_out
@@ -573,39 +572,33 @@ std::cout<<std::endl;
 
 template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::book_maintain(
-	transMessage trans_message
+	orderMessage order_message
 ){
-	if (trans_message.valid){
-		order_message_fifo.write(trans_message.ordermessage);
-	}
 
 	if (update_en){
 		addr_index bookIndex;
 		order order_info;
 		ap_uint<1> bid;
 		orderOp direction;		// new change remove
-		orderMessage order_msg;
-		ORDER_FIFO:
-		while (! order_message_fifo.empty()){
-			order_msg = order_message_fifo.read();
-			order_info = order_msg.order_info;
-			bid = order_msg.side;
-			direction = order_msg.operation;
 
-			bookIndex = get_maintain_bookIndex(
-					order_info,
-					bid,
-					direction		// new change remove
-				);
+		order_info = order_message.order_info;
+		bid = order_message.side;
+		direction = order_message.operation;
 
-			update_book(
-					order_info,
-					bid,
-					direction,		// new change remove
+		bookIndex = get_maintain_bookIndex(
+				order_info,
+				bid,
+				direction		// new change remove
+			);
 
-					bookIndex
-				);
-		}
+		update_book(
+				order_info,
+				bid,
+				direction,		// new change remove
+
+				bookIndex
+			);
+	
 	}
 }
 
@@ -688,7 +681,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::book_read(
 // main management
 template <int RANGE, int CHAIN_LEVELS>
 void SubOrderBook<RANGE, CHAIN_LEVELS>::suborderbook(
-	transMessage trans_message,
+	orderMessage order_message,
 	ap_uint<8> read_max,
 	ap_uint<1> req_read_in,
 	hls::stream<price_depth> &feed_stream_out
@@ -699,7 +692,7 @@ void SubOrderBook<RANGE, CHAIN_LEVELS>::suborderbook(
 	// read process
 	book_read(read_max, feed_stream_out); 
 	// book_read(read_max, out_buffer); 
-	book_maintain(trans_message);
+	book_maintain(order_message);
 
 }
 
