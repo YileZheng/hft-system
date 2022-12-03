@@ -34,10 +34,10 @@
 # Vivado
 
 *.jou
-*/.Xil
-./proj
+**/.Xil
+**/_X
 **/proj
-*/solution1
+**/solution1
 
 # python 
 **/ipynb_checkpoints/
@@ -57,6 +57,5 @@
 **/_x/
 **/hw_emu/
 **/sw_emu/
-*/hw/*
-data/**
+**/hw/
 *.DS_Store
