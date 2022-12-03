@@ -1,82 +1,606 @@
-#include <iostream>
-#include <fstream>
+
+#define __gmp_const const
+#include <gmp.h>
+#include <mpfr.h>
+#include<iostream>
+#include<fstream>
+#include<sstream>
+#include<string>
+#include<vector>
+#include<ctime>
+#include<numeric>
+#include<map>
+
 #include "order_book.hpp"
 
 using namespace std;
-using namespace hls;
 
-#ifdef USEC
-extern "C" {
-void order_book(stream<order> &order_stream,
-				stream<Time> &incoming_time,
-				stream<metadata> &incoming_meta,
-				stream<order> &top_bid,
-				stream<order> &top_ask,
-				stream<Time> &outgoing_time,
-				stream<metadata> &outgoing_meta,
-                ap_uint<32> &top_bid_id,
-                ap_uint<32> &top_ask_id);
-#else
-void order_book(stream<order> &order_stream,
-				stream<Time> &incoming_time,
-				stream<metadata> &incoming_meta,
-				stream<order> &top_bid,
-				stream<order> &top_ask,
-				stream<Time> &outgoing_time,
-				stream<metadata> &outgoing_meta,
-                ap_uint<32> &top_bid_id,
-                ap_uint<32> &top_ask_id);
-#endif
+#define MULTI 10000
+#define LV 10
+#define UNIT 0.01
+#define SLOTSIZE 10
+#define READ_MAX 10
+#define STOCK_TEST 3
+int read_max = READ_MAX;
+//char symbols[STOCK_TEST][8] =  {{'A','A','P','L',' ',' ',' ',' '},
+//								{'A','M','Z','N',' ',' ',' ',' '},
+//								{'G','O','O','G',' ',' ',' ',' '}};
+
+char symbols[STOCK_TEST][8] =  {{' ',' ',' ',' ','L','P', 'A','A'},
+								{' ',' ',' ',' ', 'N','Z','M','A'},
+								{' ',' ',' ',' ', 'G','O','O','G'}};
+// config
+symbol_t *symbol_map=(symbol_t*)symbols;
+
+
+vector<string> split_string(std::string s,std::string delimiter);
+string concat_string(vector<vector<price_depth>> pd, std::string delimiter, int level);
+void check_update_last_price(vector<string> orderBook_split, int price_lasta_init, int price_lastb_init, int vol_lasta_init, int vol_lastb_init);
+
+class last_manager{
+	map<int, int> cache_last;
+	vector<pair<int, int>> cache_lasta, cache_lastb;
+	price_depth price_stream_out[100];
+	Message stream_in[10];
+	int cache_max_len = 10;
+
+	public:
+	int price_last_b, price_last_a;
+	int vol_last_b, vol_last_a;
+	symbol_t cur_symbol;
+	
+	last_manager(
+		int price_lasta_init,
+		int price_lastb_init,
+		int vol_lasta_init,
+		int vol_lastb_init,
+		symbol_t cur_symbol_init
+	){
+		price_last_b=price_lastb_init, price_last_a=price_lasta_init;
+		vol_last_b=vol_lastb_init, vol_last_a=vol_lasta_init;
+		cur_symbol = cur_symbol_init;
+	}
+
+	last_manager(last_manager &l){
+		price_last_b=l.price_last_b;
+		price_last_a=l.price_last_a;
+		vol_last_b=l.vol_last_b;
+		vol_last_a=l.vol_last_a;
+		cur_symbol = l.cur_symbol;
+
+	}
+
+	void check_update_last_price(
+		vector<string> orderBook_split,
+		Time tmstmp
+	);
+
+};
+
+
 
 int main()
 {
-	std::cout << "========TESTING STARTED========" << std::endl;
+	int level=LV;
+	string message_path[STOCK_TEST] =  {{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/AAPL_2012-06-21_34200000_57600000_message_10.csv"},
+										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/AMZN_2012-06-21_34200000_57600000_message_10.csv"},
+										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/GOOG_2012-06-21_34200000_57600000_message_10.csv"}};
+	string orderbook_path[STOCK_TEST] ={{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/AAPL_2012-06-21_34200000_57600000_orderbook_10.csv"},
+										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/AMZN_2012-06-21_34200000_57600000_orderbook_10.csv"},
+										{"/home/yzhengbv/00-data/git/hft-system/data/lobster/subset/GOOG_2012-06-21_34200000_57600000_orderbook_10.csv"}};
+					
+	string result_path("result.csv");
+	string answer_path("answer.csv");
 
-	//Output data-structures
-	stream<order> top_bid_stream;
-	stream<order> top_ask_stream;
-	stream<Time> outgoing_time;
-	stream<metadata> outgoing_meta;
-	order top_bid;
-	order top_ask;
-	Time out_time;
-	metadata out_meta;
+	string pr, qty, oid, tstmp, ab, op;
+	ifstream message_ls[STOCK_TEST],  orderbook_ls[STOCK_TEST];
+	// vector<ifstream *> message_ls(STOCK_TEST),  orderbook_ls(STOCK_TEST);
+	// vector<last_manager *> last_ls(STOCK_TEST);
+	last_manager* last_ls[STOCK_TEST];
+	string last_orderbook_line_ls[STOCK_TEST];
+	ifstream new_file;
+	ofstream result, answer;
 
-	//Input data-structures
-	stream<order> test_stream;
-	stream<Time> test_time;
-	stream<metadata> test_meta;
-	sockaddr_in temp_1;
-	metadata temp_meta;
-	Time t;
-	order test;
+	vector<double> stat[4]; // stat_add, stat_chg, stat_rmv;
+	clock_t start, end;
+	double elapsed_ms;
 
-	//AXI-Lite
-	ap_uint<32> top_bid_id;
-	ap_uint<32> top_ask_id;
 
-    ap_ufixed<16, 8> testprices [544] = {23.79, 32.73, 24.17, 23.26, 25.79, 24.84, 27.22, 25.85, 26.63, 27.53, 25.03, 29.46, 27.35, 27.56, 30.70, 25.07, 25.20, 31.65, 30.90, 31.00, 29.79, 26.20, 32.84, 32.14, 28.78, 28.34, 26.14, 24.10, 28.94, 24.58, 32.02, 26.23, 31.00, 24.10, 25.20, 30.53, 29.46, 29.51, 30.70, 30.53, 27.53, 29.23, 26.36, 32.84, 27.22, 25.73, 29.51, 25.96, 21.07, 30.90, 26.63, 29.88, 33.50, 23.26, 34.29, 24.58, 31.65, 32.14, 25.73, 25.82, 28.94, 26.12, 25.96, 33.50, 26.23, 29.88, 26.33, 25.07, 26.12, 32.73, 27.30, 26.36, 27.56, 27.78, 31.53, 26.20, 27.53, 28.34, 24.84, 31.17, 26.19, 28.27, 26.33, 27.35, 29.79, 33.91, 26.81, 27.59, 33.91, 28.27, 27.59, 26.81, 27.56, 28.78, 29.30, 26.21, 32.25, 26.21, 27.78, 26.79, 22.37, 27.83, 32.02, 27.83, 28.56, 24.71, 25.99, 22.37, 26.79, 29.37, 25.99, 31.53, 21.07, 26.14, 29.53, 25.03, 28.02, 23.99, 32.25, 26.42, 27.53, 29.23, 29.53, 26.19, 24.29, 28.56, 24.17, 25.79, 28.37, 23.99, 29.37, 25.82, 26.42, 24.71, 25.85, 23.02, 28.69, 29.17, 29.17, 29.04, 23.79, 31.22, 23.02, 28.37, 28.02, 28.69, 27.56, 29.04, 24.71, 31.17, 27.30, 29.82, 29.82, 19.67, 23.38, 26.31, 24.71, 26.43, 33.41, 25.33, 19.67, 23.38, 33.41, 24.73, 29.30, 26.31, 31.22, 25.33, 26.43, 24.73, 27.92, 14.04, 27.92, 14.04, 21.39, 21.39, 27.11, 27.11, 29.27, 33.20, 24.77, 28.10, 21.51, 25.00, 25.00, 28.22, 27.05, 21.51, 33.20, 29.27, 27.05, 28.22, 28.10, 26.26, 24.77, 26.26, 28.58, 25.46, 28.63, 25.42, 25.42, 23.62, 23.62, 28.63, 25.46, 28.58, 25.06, 24.34, 31.98, 30.37, 29.10, 30.67, 24.34, 28.52, 26.63, 26.63, 32.15, 30.98, 31.98, 26.26, 25.04, 23.32, 22.49, 27.01, 25.04, 30.67, 25.06, 23.32, 29.10, 21.53, 23.21, 29.41, 30.96, 23.21, 28.52, 28.92, 29.84, 30.96, 29.50, 30.98, 28.92, 26.13, 24.38, 26.26, 27.08, 24.42, 28.38, 26.13, 26.66, 27.01, 28.85, 28.21, 27.08, 26.44, 27.42, 24.26, 28.85, 31.06, 31.25, 29.50, 30.37, 29.41, 30.61, 27.41, 31.06, 27.86, 28.20, 24.42, 26.44, 23.97, 28.20, 27.26, 27.42, 21.53, 23.97, 25.99, 27.41, 28.41, 29.84, 28.38, 24.26, 31.87, 32.94, 30.35, 30.23, 27.91, 30.61, 28.41, 22.72, 28.73, 24.53, 23.97, 30.35, 22.72, 28.61, 30.23, 23.97, 26.70, 28.38, 21.11, 22.99, 31.25, 27.86, 26.66, 27.91, 28.10, 32.15, 24.53, 31.87, 27.26, 28.61, 25.99, 28.38, 22.50, 28.83, 26.70, 23.88, 32.34, 22.99, 23.88, 27.15, 23.74, 26.62, 34.11, 28.83, 30.27, 26.71, 27.01, 26.62, 29.60, 29.24, 30.86, 25.25, 32.90, 30.43, 21.48, 28.24, 28.73, 29.60, 27.69, 34.00, 32.90, 22.50, 23.74, 27.69, 27.20, 28.21, 30.43, 27.01, 24.05, 27.20, 26.35, 23.92, 31.72, 31.44, 27.72, 23.92, 27.66, 25.25, 25.83, 27.42, 24.05, 29.21, 28.10, 31.49, 30.27, 22.70, 31.81, 29.54, 25.38, 29.21, 26.78, 32.34, 27.06, 26.96, 26.70, 32.94, 31.44, 27.06, 25.31, 27.15, 36.56, 29.79, 29.54, 27.17, 27.47, 24.28, 25.96, 28.21, 31.49, 27.99, 24.28, 22.62, 28.21, 28.50, 22.62, 28.52, 21.11, 28.91, 29.79, 28.91, 28.78, 28.31, 28.52, 27.17, 27.94, 22.71, 29.00, 25.08, 28.71, 29.39, 27.99, 29.20, 25.83, 29.75, 31.13, 28.39, 28.78, 22.71, 24.38, 31.04, 22.49, 26.16, 26.59, 29.44, 26.80, 26.78, 20.53, 27.66, 28.39, 32.47, 29.20, 25.88, 28.95, 27.47, 27.94, 31.81, 25.31, 29.48, 30.86, 26.35, 25.60, 28.71, 34.11, 25.49, 25.96, 26.59, 26.90, 25.43, 23.21, 27.25, 30.58, 25.71, 29.41, 31.18, 29.48, 29.56, 26.56, 31.32, 25.43, 22.70, 28.95, 31.06, 31.13, 26.57, 21.01, 26.96, 29.41, 27.01, 28.57, 28.57, 26.13, 23.99, 25.53, 24.96, 23.99, 28.30, 26.90, 32.47, 31.32, 25.60, 25.38, 31.93, 23.70, 31.06, 24.81, 34.11, 28.77, 34.11, 22.94, 34.00, 20.22, 21.01, 26.48, 30.11, 29.66, 23.67, 26.48, 27.44, 24.58, 27.72, 31.17, 31.62, 31.18, 29.61, 26.70, 26.57, 30.11, 26.54, 23.21, 27.66, 25.71, 24.68, 23.67, 27.25, 24.75, 29.44, 20.53, 28.77, 23.73, 27.68, 26.83, 29.56, 28.71, 31.30, 25.08, 29.75, 26.71, 48.19, 27.01, 37.43, 24.68, 30.18, 24.18, 25.49, 31.04, 28.31, 27.31, 24.46, 37.43, 26.28, 13.45, 30.58, 31.72, };
-    ap_uint<3> testtypes [544] = {3, 2, 3, 3, 2, 2, 2, 3, 2, 3, 3, 2, 3, 2, 3, 3, 2, 3, 3, 3, 2, 2, 3, 2, 2, 3, 2, 2, 3, 3, 3, 3, 5, 4, 4, 2, 4, 2, 5, 4, 5, 3, 2, 5, 4, 2, 4, 3, 3, 5, 4, 2, 3, 5, 3, 5, 5, 4, 4, 3, 5, 2, 5, 5, 5, 4, 2, 5, 4, 4, 2, 4, 3, 2, 3, 4, 3, 5, 4, 2, 3, 2, 4, 5, 4, 3, 3, 3, 5, 4, 5, 5, 4, 4, 2, 3, 2, 5, 4, 3, 2, 3, 5, 5, 3, 2, 3, 4, 5, 2, 5, 5, 5, 4, 2, 5, 2, 2, 4, 2, 5, 5, 4, 5, 5, 5, 5, 4, 2, 4, 4, 5, 4, 4, 5, 2, 3, 3, 5, 2, 5, 3, 4, 4, 4, 5, 5, 4, 3, 4, 4, 2, 4, 3, 3, 3, 5, 3, 3, 2, 5, 5, 5, 2, 4, 5, 5, 4, 5, 4, 3, 2, 5, 4, 3, 5, 2, 4, 2, 2, 2, 2, 2, 3, 5, 2, 2, 4, 4, 4, 4, 4, 4, 2, 4, 4, 2, 2, 2, 2, 4, 2, 4, 4, 4, 4, 3, 3, 2, 2, 3, 3, 5, 2, 3, 5, 3, 3, 4, 3, 3, 3, 2, 3, 5, 5, 5, 5, 5, 3, 3, 3, 2, 5, 4, 2, 3, 4, 2, 5, 4, 3, 3, 5, 3, 3, 3, 5, 2, 5, 3, 3, 5, 2, 3, 3, 5, 3, 3, 4, 4, 5, 3, 3, 5, 2, 2, 5, 4, 3, 4, 3, 5, 5, 5, 2, 5, 3, 5, 5, 5, 3, 3, 2, 2, 3, 5, 5, 2, 2, 2, 3, 4, 4, 3, 4, 5, 3, 2, 3, 2, 5, 4, 4, 5, 2, 5, 4, 5, 5, 5, 4, 4, 3, 3, 5, 2, 2, 4, 4, 2, 2, 2, 2, 5, 2, 2, 3, 4, 2, 2, 2, 3, 2, 2, 3, 4, 4, 4, 2, 3, 4, 5, 4, 4, 3, 5, 4, 5, 3, 5, 2, 3, 3, 3, 2, 5, 2, 5, 3, 3, 5, 3, 4, 3, 4, 3, 2, 3, 2, 5, 2, 4, 3, 2, 3, 5, 5, 5, 2, 4, 3, 3, 5, 2, 2, 3, 3, 2, 5, 2, 5, 3, 4, 2, 5, 3, 5, 2, 5, 4, 3, 3, 5, 4, 3, 3, 2, 2, 2, 2, 4, 3, 5, 3, 3, 2, 5, 5, 5, 3, 4, 3, 2, 2, 2, 4, 3, 4, 4, 3, 5, 3, 3, 4, 5, 4, 4, 3, 4, 4, 3, 3, 4, 2, 5, 4, 2, 2, 2, 3, 3, 3, 3, 2, 5, 2, 5, 3, 4, 5, 5, 3, 5, 2, 2, 4, 5, 2, 2, 4, 3, 3, 2, 3, 5, 2, 4, 5, 5, 5, 4, 3, 2, 5, 3, 2, 2, 4, 3, 5, 3, 4, 2, 3, 2, 2, 4, 2, 3, 4, 2, 2, 4, 3, 5, 4, 5, 3, 4, 3, 5, 3, 4, 5, 3, 4, 5, 2, 2, 3, 2, 4, 5, 3, 4, 5, 4, 3, 4, 3, 5, 3, 3, 4, 5, 5, 2, 3, 5, 2, 2, 5, 5, };
-    ap_uint<8> testsizes [544] = {93, 131, 217, 21, 85, 20, 63, 61, 233, 9, 204, 22, 217, 17, 163, 23, 92, 21, 233, 171, 233, 98, 60, 168, 233, 82, 6, 21, 140, 129, 1, 233, 171, 21, 92, 178, 22, 92, 163, 178, 9, 177, 80, 60, 63, 42, 92, 55, 62, 233, 233, 35, 233, 21, 222, 129, 21, 168, 42, 12, 140, 133, 55, 233, 233, 35, 30, 23, 133, 131, 13, 80, 19, 112, 59, 98, 208, 82, 20, 112, 89, 233, 30, 217, 233, 106, 24, 18, 106, 233, 18, 24, 17, 233, 20, 125, 181, 125, 112, 21, 69, 4, 1, 4, 4, 39, 195, 69, 21, 127, 195, 59, 62, 6, 20, 204, 240, 85, 181, 14, 208, 177, 20, 89, 222, 4, 217, 85, 29, 85, 127, 12, 14, 39, 61, 70, 137, 136, 136, 124, 93, 121, 70, 29, 240, 137, 19, 124, 76, 112, 13, 88, 88, 148, 129, 7, 76, 35, 80, 17, 148, 129, 80, 104, 20, 7, 121, 17, 35, 104, 27, 233, 27, 233, 5, 5, 231, 231, 178, 233, 154, 55, 36, 66, 66, 113, 44, 36, 233, 178, 44, 113, 55, 44, 154, 44, 54, 88, 4, 12, 12, 31, 31, 4, 88, 54, 137, 68, 233, 11, 233, 40, 68, 146, 150, 150, 38, 19, 233, 53, 182, 225, 144, 8, 182, 40, 137, 225, 233, 106, 7, 121, 82, 7, 146, 11, 147, 82, 159, 19, 11, 12, 64, 53, 77, 103, 38, 12, 147, 8, 29, 8, 77, 75, 101, 67, 29, 42, 7, 159, 11, 121, 27, 70, 42, 45, 103, 103, 75, 2, 103, 24, 101, 106, 2, 53, 70, 165, 147, 38, 67, 235, 22, 5, 22, 143, 27, 165, 239, 46, 74, 223, 5, 239, 2, 22, 223, 77, 71, 1, 110, 7, 45, 147, 143, 74, 38, 74, 235, 24, 2, 53, 71, 57, 129, 77, 125, 63, 110, 125, 77, 154, 32, 33, 129, 6, 88, 138, 32, 5, 175, 14, 180, 125, 12, 8, 175, 46, 5, 29, 13, 125, 57, 154, 29, 96, 8, 12, 138, 25, 96, 123, 73, 111, 46, 150, 73, 61, 180, 119, 17, 25, 4, 74, 84, 6, 60, 16, 21, 79, 4, 10, 63, 15, 9, 28, 22, 46, 15, 104, 77, 233, 23, 21, 194, 46, 233, 9, 39, 84, 21, 233, 9, 39, 68, 9, 144, 1, 12, 23, 12, 39, 89, 144, 194, 17, 172, 169, 4, 55, 8, 21, 75, 119, 96, 46, 175, 39, 172, 64, 44, 144, 29, 52, 36, 60, 10, 149, 61, 175, 131, 75, 56, 3, 46, 17, 16, 104, 134, 14, 123, 9, 233, 33, 77, 9, 52, 45, 30, 32, 82, 1, 135, 42, 110, 134, 46, 233, 20, 30, 60, 3, 233, 46, 51, 23, 9, 42, 163, 93, 93, 233, 13, 62, 17, 13, 63, 45, 131, 20, 9, 79, 49, 184, 233, 233, 6, 147, 6, 30, 13, 194, 23, 197, 127, 43, 13, 197, 233, 126, 150, 45, 30, 110, 2, 28, 51, 127, 141, 32, 27, 135, 85, 13, 82, 77, 36, 149, 17, 52, 7, 17, 46, 233, 233, 4, 96, 88, 186, 163, 132, 85, 36, 86, 77, 44, 89, 18, 89, 132, 30, 99, 1, 111, };
-    ap_uint<32> testids [544] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 20, 28, 17, 36, 12, 38, 15, 36, 10, 42, 43, 23, 7, 46, 38, 48, 49, 19, 9, 52, 53, 4, 55, 30, 18, 24, 46, 60, 29, 62, 48, 53, 32, 52, 67, 16, 62, 2, 71, 43, 73, 74, 75, 22, 77, 26, 6, 80, 81, 82, 67, 13, 21, 86, 87, 88, 86, 82, 88, 87, 14, 25, 95, 96, 97, 96, 74, 100, 101, 102, 31, 102, 105, 106, 107, 101, 100, 110, 107, 75, 49, 27, 115, 11, 117, 118, 97, 120, 77, 42, 115, 81, 55, 105, 3, 5, 129, 118, 110, 60, 120, 106, 8, 136, 137, 138, 138, 140, 1, 142, 136, 129, 117, 137, 73, 140, 149, 80, 71, 152, 152, 154, 155, 156, 149, 158, 159, 160, 154, 155, 159, 164, 95, 156, 142, 160, 158, 164, 171, 172, 171, 172, 175, 175, 178, 178, 180, 181, 182, 183, 184, 185, 185, 187, 188, 184, 181, 180, 188, 187, 183, 195, 182, 195, 199, 200, 201, 202, 202, 204, 204, 201, 200, 199, 210, 211, 212, 213, 214, 215, 211, 217, 218, 218, 220, 221, 212, 223, 224, 225, 226, 227, 224, 215, 210, 225, 214, 233, 234, 235, 236, 234, 217, 239, 240, 236, 242, 221, 239, 245, 246, 223, 248, 249, 250, 245, 252, 227, 254, 255, 248, 257, 258, 259, 254, 261, 262, 242, 213, 235, 266, 267, 261, 269, 270, 249, 257, 273, 270, 275, 258, 233, 273, 279, 267, 281, 240, 250, 259, 285, 286, 287, 288, 289, 266, 281, 292, 293, 294, 295, 287, 292, 298, 288, 295, 301, 302, 303, 304, 262, 269, 252, 289, 309, 220, 294, 285, 275, 298, 279, 302, 317, 318, 301, 320, 321, 304, 320, 324, 325, 326, 327, 318, 329, 330, 331, 326, 333, 334, 335, 336, 337, 338, 339, 334, 293, 333, 343, 344, 337, 317, 325, 343, 349, 255, 338, 331, 353, 349, 355, 356, 357, 358, 359, 356, 361, 336, 363, 364, 353, 366, 309, 368, 329, 370, 371, 372, 373, 366, 375, 321, 377, 378, 379, 286, 358, 377, 383, 324, 385, 386, 372, 388, 389, 390, 391, 392, 368, 394, 390, 396, 392, 398, 396, 400, 303, 402, 386, 402, 405, 406, 400, 388, 409, 410, 411, 412, 413, 414, 394, 416, 363, 418, 419, 420, 405, 410, 246, 424, 226, 426, 427, 428, 429, 375, 431, 361, 420, 434, 416, 436, 437, 389, 409, 371, 383, 442, 335, 355, 445, 446, 327, 448, 391, 427, 451, 452, 453, 454, 455, 456, 457, 458, 442, 460, 385, 462, 452, 370, 437, 466, 419, 468, 469, 378, 457, 472, 473, 473, 475, 476, 477, 478, 476, 480, 451, 434, 462, 445, 373, 486, 487, 466, 489, 490, 491, 490, 493, 344, 495, 469, 497, 498, 499, 500, 497, 502, 503, 359, 505, 506, 458, 508, 379, 468, 498, 512, 453, 514, 456, 516, 500, 454, 519, 428, 431, 522, 523, 524, 525, 460, 446, 528, 412, 418, 330, 532, 472, 534, 516, 536, 537, 448, 424, 406, 541, 542, 534, 544, 545, 455, 357, };
+	// order stream
+	int id=-1;
+	orderOp odop;
+	ap_uint<1> bid, req_read;
+	price_depth price_stream_out[100] = {0};
+	Message stream_in[10] = {0};
+	price_depth price_read;
+	Message input_in;
 
-    for(unsigned int i = 0; i < 544; i++){
-        test.price = testprices[i];
-        test.size = testsizes[i];
-        test.orderID = testids[i];
-        test.direction = testtypes[i];
-        temp_1.port = 0; temp_1.addr = 0; temp_meta.destinationSocket = temp_1; temp_meta.sourceSocket = temp_1; t = 0;
-        test_stream.write(test);
-        test_time.write(t);
-        test_meta.write(temp_meta);
-    }
 
-    while(!test_stream.empty()){
-        order_book(test_stream, test_time, test_meta, top_bid_stream, top_ask_stream, outgoing_time, outgoing_meta, top_bid_id, top_ask_id);
-        cout << top_bid_id << "\t" << top_ask_id << endl;
-    }
+	// initiate orderbook system
+	order_book(
+		// data
+		stream_in,
+		price_stream_out,
+		// configuration inputs
+		(symbol_t)0,
+		read_max,
+		0,
+		// control input
+		'A'  // void, run, halt, read book, clear, config symbol map | read_max 
+	);
 
-	std::cout << "========TESTING FINISHED========" << std::endl;
+	// boot the kernel
+	order_book(
+		// data
+		stream_in,
+		price_stream_out,
+		// configuration inputs
+		(symbol_t)0,
+		read_max,
+		0,
+		// control input
+		'R'  // void, run, halt, read book, clear, config symbol map | read_max 
+	);
 
-	return 0;
+	// open files
+	for (int i=0; i<STOCK_TEST; i++){
+		// ifstream message, orderbook;
+		// message.open(message_path[i], ios::in);
+		// orderbook.open(orderbook_path[i], ios::in);
+		message_ls[i].open(message_path[i], ios::in);
+		orderbook_ls[i].open(orderbook_path[i], ios::in);
+		if((!message_ls[i])){
+			std::cout<<"Sorry the file you are looking for is not available: "<<message_path[i]<<endl;
+			return -1;
+		}
+		// message_ls.push_back(&message);
+
+		if((!orderbook_ls[i])){
+			std::cout<<"Sorry the file you are looking for is not available: "<<orderbook_path[i]<<endl;
+			return -1;
+		}
+		// orderbook_ls.push_back(&orderbook);
+	}
+
+	result.open(result_path, ios::out | ios::trunc);
+	answer.open(answer_path, ios::out | ios::trunc);
+
+
+	// stream inputs
+	string line, orderbook_line;
+	vector<string> line_split;
+	for (int ii=0; ii<STOCK_TEST; ii++){
+		if (!message_ls[ii].eof()){
+			id++;
+			orderbook_ls[ii] >> orderbook_line;
+			message_ls[ii] >> line;
+			line_split = split_string(orderbook_line, string(","));
+			std:: cout << "Initiate order book "<< ii << std::endl;
+			bid = 1;
+			odop = NEW;
+			req_read = 0;
+			for(vector<string>::iterator it = line_split.begin(); it != line_split.end(); it++){
+				pr = *it;
+				qty = *(++it);
+				input_in.price = (price_t)(stof(pr)/MULTI); input_in.size = (qty_t)(stof(qty)); input_in.orderID = (size_t)1;
+				bid++;
+				input_in.timestamp = (Time)34200*1000000000;
+				input_in.symbol = symbol_map[ii];
+				input_in.operation = odop;
+				input_in.side = bid;
+				// stream_in.write(input_in);
+				stream_in[0] = input_in;
+				order_book(
+					// data
+					stream_in,
+					price_stream_out,
+					// configuration inputs
+					symbol_map[ii],
+					read_max,
+					1,
+					// control input
+					'v'  // void, run, halt, read book, clear, config symbol map | read_max 
+				);
+			}
+			int pricea_init, priceb_init, vola_init, volb_init;
+			pricea_init = stoi(*(line_split.end()-4));
+			priceb_init = stoi(*(line_split.end()-2));
+			vola_init = stoi(*(line_split.end()-3));
+			volb_init = stoi(*(line_split.end()-1));
+			last_manager* last = new last_manager(pricea_init, priceb_init, vola_init, volb_init,symbol_map[ii]);
+			// last_ls.push_back(&last);
+			last_ls[ii] = last;
+			last_orderbook_line_ls[ii] = orderbook_line;
+		}
+	}
+
+	// boot the kernel
+	order_book(
+		// data
+		stream_in,
+		price_stream_out,
+		// configuration inputs
+		(symbol_t)0,
+		read_max,
+		0,
+		// control input
+		's'  // void, run, halt, read book, clear, config symbol map | read_max 
+	);
+	// std::cout << "Read symbol map from the kernel "<< std::endl;
+	// for (int i=0; i<STOCK_TEST; i++){
+	// 	printf("0x%x", ((symbol_t)price_stream_out[i]).to_uint64());
+	// }
+
+
+	ap_uint<STOCK_TEST> neof = 0-1;
+	while (neof){
+		for (int ii=0; ii<STOCK_TEST; ii++){
+			id++;
+			if (!message_ls[ii].eof()){
+				orderbook_ls[ii] >> orderbook_line;
+				message_ls[ii] >> line;
+				line_split = split_string(line, string(","));
+
+				tstmp = line_split[0];
+				op = line_split[1];
+				oid = line_split[2];
+				qty = line_split[3];
+				pr = line_split[4];
+				ab = line_split[5];
+
+				last_ls[ii]->check_update_last_price(split_string(orderbook_line, string(",")),(Time)(stof(tstmp)*1000000000));
+				
+				if ((op[0] == '5') || (op[0] == '7'))
+					continue;
+
+				input_in.price = (price_t)(stof(pr)/MULTI); input_in.size = (qty_t)(stof(qty)); input_in.orderID = (size_t)(stoi(oid));
+
+
+				switch (op[0])
+				{
+					case '1':
+						odop = NEW;
+						break;
+					case '2':
+					case '3':
+					case '4':
+						odop = CHANGE;
+						input_in.size = -input_in.size;
+						break;
+					default:
+						break;
+				}
+
+				bid = (ab == "1")? 1: 0;
+				req_read = (((id)%50 == 0)&&(!req_read))? 1: 0;
+				char instr = req_read? 'r': 'v';
+				std::cout<<"Line: " << (id/STOCK_TEST) << " Symbol: " << symbol_map[ii] <<" OrderID: "<<input_in.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< input_in.price <<" Volume: "<< input_in.size <<" Read: "<<req_read<<endl;
+
+				start = clock();
+				input_in.timestamp = (Time)(stof(tstmp)*1000000000);
+				input_in.symbol = symbol_map[ii];
+				input_in.operation = odop;
+				input_in.side = bid;
+				// stream_in.write(input_in);
+				stream_in[0] = input_in;
+				order_book(
+					// data
+					stream_in,
+					price_stream_out,
+					// configuration inputs
+					symbol_map[ii],
+					read_max,
+					1,
+					// control input
+					'v'  // void, run, halt, read book, clear, config symbol map | read_max 
+				);
+				end = clock();
+				elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000000;
+				stat[(int)odop].push_back(elapsed_ms);
+
+
+
+				if (req_read==1){
+					order_book(
+						// data
+						stream_in,
+						price_stream_out,
+						// configuration inputs
+						symbol_map[ii],
+						read_max,
+						0,
+						// control input
+						'r'  // void, run, halt, read book, clear, config symbol map | read_max 
+					);
+					end = clock();
+					elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000000;
+					stat[3].push_back(elapsed_ms);
+					vector<vector<price_depth>> resultbook;
+					vector<price_depth> cur_v;
+					bool br=true;
+					int i=0;
+					while (true){
+	//					std::cout << "Symbol: " << symbol_map[ii] << std::endl;
+						price_read = price_stream_out[i++];
+						std::cout << price_read.price << " " << price_read.size << std::endl;
+						if (price_read.price != 0){
+							cur_v.push_back(price_read);
+						}else {
+							br = !br;
+							resultbook.push_back(cur_v);
+							cur_v.clear();
+							if (br) break;
+						}
+					}
+					string last_orderbook_line = last_orderbook_line_ls[ii];
+					string s = concat_string(resultbook, string(","), level);
+					if (s.compare(orderbook_line) != 0){
+						std::cout <<"Symbol: " <<symbol_map[ii]<<": Result orderbook not match !!!!!!!!" <<std::endl;
+						std::cout <<"Ground Truth: "<< orderbook_line << std::endl;
+						std::cout <<"OrderBook:    "<< s << std::endl;
+					}
+					result << s << endl;
+					answer << orderbook_line << endl;
+				}
+				last_orderbook_line_ls[ii] = orderbook_line;
+				std::cout<<std::endl;
+			}
+			else{
+				neof &= ~(ap_uint<STOCK_TEST>(0x1) << ii);
+			}
+		}
+	}
+	answer.close();
+	result.close();
+	for (int i=0; i<STOCK_TEST; i++){
+		message_ls[i].close();
+		orderbook_ls[i].close();
+	}
+
+	// statistic
+	for(int i=0; i<4; i++){
+		double sum = std::accumulate(stat[i].begin(), stat[i].end(), 0.0);
+		double mean = sum / stat[i].size();
+
+		double sq_sum = std::inner_product(stat[i].begin(), stat[i].end(), stat[i].begin(), 0.0);
+		double stdev = std::sqrt(sq_sum / stat[i].size() - mean * mean);
+
+		printf("Time elapsed: Mean %0.3fus, Stddev: %0.3fus\n", mean, stdev);
+	}
+
+	// Compare the results file with the golden results
+	
+	int retval=0;
+	retval = system((string("diff --brief -w ")+result_path+" "+answer_path).data());
+	if (retval != 0) {
+		printf("Test failed  !!!\n"); 
+		retval=1;
+	} else {
+		printf("Test passed !\n");
+	}
+
+	// Return 0 if the test passed
+	return retval;
+
 }
+
+vector<string> split_string(
+	std::string s,
+	std::string delimiter
+	){
+
+	size_t pos = 0;
+	std::string token;
+	vector<string> res;
+	while ((pos = s.find(delimiter)) != std::string::npos) {
+		token = s.substr(0, pos);
+		res.push_back(token);
+		s.erase(0, pos + delimiter.length());
+	}
+	res.push_back(s);
+//	std::cout << "Splitted line length: " << res.size() << std::endl;
+	return res;
+}
+
+string concat_string(
+	vector<vector<price_depth>> pd, 
+	std::string delimiter,
+	int level
+	){
+	float multiple = MULTI;
+
+	std::ostringstream ss;
+	price_depth cur_pd; 
+	int price;
+	int size;
+
+	vector<vector<price_depth>::iterator> iter_v, end_v;
+	for (std::vector<vector<price_depth>>::iterator it = pd.begin(); it != pd.end(); ++it){
+		iter_v.push_back(it->begin());
+		end_v.push_back(it->end());
+	}
+
+	for (int i=0; i<level; i++){
+		for (int ii = 0; ii < iter_v.size(); ++ii){
+			if (iter_v[ii] < end_v[ii]){
+				cur_pd = *(iter_v[ii]++);
+				price = (std::round(((float)cur_pd.price)/UNIT)*(multiple*UNIT));
+				size = cur_pd.size;
+			}else{
+				price = (ii == 0)? -9999999999: 9999999999;
+				size = 0;
+			}
+			ss<< price <<delimiter<< size;
+			if (!((i == level-1) && (ii == iter_v.size()-1))){
+				ss << delimiter;
+			}
+		}
+	}
+
+	return std::string(ss.str());
+}
+
+
+void last_manager::check_update_last_price(
+	vector<string> orderBook_split,
+	Time tmstmp
+){
+	orderOp odop;
+	ap_uint<1> bid, req_read=0;
+	Message input_in;
+	vector<pair<int, int>> *cache;
+
+	int offset, vol_cur, price_cur, target_price;
+	// bid at the end
+	offset = 0;
+	price_cur = stoi(*(orderBook_split.end()-2-4*offset)); 
+	while (price_cur == -9999999999){
+		price_cur = stoi(*(orderBook_split.end()-2-4*(++offset)));
+		cache_lastb.clear();
+	}
+	vol_cur = stoi(*(orderBook_split.end()-1-4*offset));
+
+	cache = &cache_lastb;
+	if (price_cur < price_last_b){
+		int vol_diff;
+		bool br = false;
+		while (true){
+			if (cache->size() > cache_max_len){
+					vol_diff = - cache->front().second;
+					target_price = cache->front().first;
+					cache->erase(cache->begin());
+			}
+			else
+			{
+				if ((price_cur > cache->back().first) || (cache->size()==0)){
+					// expected price maybe still behind, add this unexpected new price
+					br = true;
+					vol_diff = vol_cur;
+					target_price = price_cur;
+				}else if (price_cur == cache->back().first){
+					// hit the expected price
+					br = true;
+					vol_diff = vol_cur - cache->back().second;
+					target_price = price_cur;
+					cache->pop_back();
+				}else{
+					// expected price is removed from the book already, remove it untill get a new reasonable expected price
+					vol_diff = - cache->back().second;
+					target_price = cache->back().first;
+					cache->pop_back();
+				}
+			}
+			
+			if (vol_diff != 0){
+				input_in.price = (price_t)((float)(target_price)/MULTI); input_in.size = (qty_t)(vol_diff); input_in.orderID = 1000;
+				bid = 1;
+				odop = (vol_diff<0)? CHANGE: NEW;
+				std::cout <<"Change on price level at the end: ";
+				std::cout<<" Symbol: " << cur_symbol <<" OrderID: "<<input_in.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< input_in.price <<" Volume: "<< input_in.size <<" Read: "<<req_read<<endl;
+				input_in.timestamp = tmstmp;
+				input_in.symbol = cur_symbol;
+				input_in.operation = odop;
+				input_in.side = bid;
+				// stream_in.write(input_in);
+				stream_in[0] = input_in;
+				order_book(
+					// data
+					stream_in,
+					price_stream_out,
+					// configuration inputs
+					cur_symbol,
+					read_max,
+					1,
+					// control input
+					'v'  // void, run, halt, read book, clear, config symbol map | read_max 
+				);
+			}
+			if (br) break;
+		}
+	}
+	else if (price_cur > price_last_b) // price at the end overflow
+	{
+		cache->push_back( make_pair(price_last_b, vol_last_b));
+		std::cout << "Price orderflow: "<< price_last_b << std::endl;
+	}
+	price_last_b = price_cur;
+	vol_last_b = vol_cur;
+	
+
+	// ask at the end
+	offset = 0;
+	price_cur = stoi(*(orderBook_split.end()-4-4*offset)); 
+	while (price_cur == 9999999999){
+		price_cur = stoi(*(orderBook_split.end()-4-4*(++offset)));
+		cache_lasta.clear();
+	}
+	vol_cur = stoi(*(orderBook_split.end()-3-4*offset));
+
+	cache = &cache_lasta;
+	if (price_cur > price_last_a){
+		int vol_diff;
+		bool br = false;
+		while (true){
+			if (cache->size() > cache_max_len){
+					vol_diff = - cache->front().second;
+					target_price = cache->front().first;
+					cache->erase(cache->begin());
+			}
+			else
+			{
+				if ((price_cur < cache->back().first) || (cache->size()==0)){
+					// expected price maybe still behind, add this unexpected new price
+					br = true;
+					vol_diff = vol_cur;
+					target_price = price_cur;
+				}else if (price_cur == cache->back().first){
+					// hit the expected price
+					br = true;
+					vol_diff = vol_cur - cache->back().second;
+					target_price = price_cur;
+					cache->pop_back();
+				}else{
+					// expected price is removed from the book already, remove it untill get a new reasonable expected price
+					vol_diff = - cache->back().second;
+					target_price = cache->back().first;
+					cache->pop_back();
+				}
+			}
+			
+			if (vol_diff != 0){
+				input_in.price = (price_t)((float)(target_price)/MULTI); input_in.size = (qty_t)(vol_diff); input_in.orderID = 1000;
+				bid = 0;
+				odop = (vol_diff<0)? CHANGE: NEW;
+				std::cout <<"Change on price level at the end: ";
+				std::cout<<" Symbol: " << cur_symbol <<" OrderID: "<<input_in.orderID << " Side: " <<bid<<" Type: "<<odop<<" Price: "<< input_in.price <<" Volume: "<< input_in.size <<" Read: "<<req_read<<endl;
+				input_in.timestamp = tmstmp;
+				input_in.symbol = cur_symbol;
+				input_in.operation = odop;
+				input_in.side = bid;
+				// stream_in.write(input_in);
+				stream_in[0] = input_in;
+				order_book(
+					// data
+					stream_in,
+					price_stream_out,
+					// configuration inputs
+					cur_symbol,
+					read_max,
+					1,
+					// control input
+					'v'  // void, run, halt, read book, clear, config symbol map | read_max 
+				);
+			}
+			if (br) break;
+		}
+	}
+	else if (price_cur < price_last_a) // price at the end overflow
+	{
+		cache->push_back( make_pair(price_last_a, vol_last_a));
+		std::cout << "Price orderflow: "<< price_last_a << std::endl;
+	}
+	price_last_a = price_cur;
+	vol_last_a = vol_cur;
+	
+}
+

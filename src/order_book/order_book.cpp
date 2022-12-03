@@ -1,129 +1,221 @@
 #include "order_book.hpp"
+#include "suborder_book.hpp"
 
-// make sure there should up to only one empty slot each time execute this function
-void table_refresh(
-	int ystart,
-	int xstart,
-	price_lookup price_table[LEVELS*STOCKS][2]
+
+//#define __DEBUG__
+
+void order_book(
+	// data
+	Message *stream_in,
+	price_depth *stream_out,
+
+	// configuration inputs
+	symbol_t axi_read_symbol,
+	ap_uint<8> axi_read_max,
+	int axi_size,
+
+	// control input
+	char axi_instruction  // void, run, halt, read book, clear, config symbol map | read_max 
+
 ){
-	bool last_empty = False;
-	price_lookup slot;
-	for (int i=0; i < LEVELS; i++){
-		slot = price_table[ystart+i][xstart];
-		if (last_empty){
-			price_table[ystart+i][xstart] = slot;
-			last_empty = true
-		}else{
-			last_empty = slot.orderCnt == 0;
-		}
-	}
-}
+#pragma HLS INTERFACE m_axi depth=4096 bundle=gmem0 port=stream_out offset=slave
+#pragma HLS INTERFACE m_axi depth=4096 bundle=gmem1 port=stream_in offset=slave
 
-// insert a new data in the table and move the following data 1 step backward
-void table_insert(
-	int &ystart,
-	int &xstart,
-	price_lookup price_table[LEVELS*STOCKS][2],
-	price_lookup price_new,
-	int &insert_pos // relative position to the start point
-){
-	price_lookup bubble = price_new, bubble_tmp;
-	for (int i=0; i < LEVELS; i++){
-		if (i >= insert_pos && bubble.orderCnt != 0){      // start from the insert_pos and ended at the last valid slot 
-			bubble_tmp = price_table[ystart+i][xstart];
-			price_table[ystart+i][xstart] = bubble;
-			bubble = bubble_tmp;
-		}
-	}
-}
+#pragma HLS INTERFACE s_axilite bundle=control port=return
+#pragma HLS INTERFACE s_axilite port=axi_instruction bundle=control
+#pragma HLS INTERFACE s_axilite port=axi_read_symbol bundle=control
+#pragma HLS INTERFACE s_axilite port=axi_read_max bundle=control
+#pragma HLS INTERFACE s_axilite port=axi_size 	bundle=control
+#pragma HLS INTERFACE s_axilite port=stream_in 	bundle=control
+#pragma HLS INTERFACE s_axilite port=stream_out bundle=control
 
-void order_new(
-	sub_order book[LEVELS*STOCKS][2*CAPACITY],
-	price_lookup price_table[LEVELS*STOCKS][2],
-	order order_info,
-	ap_uint<12> bookIndex,
-	bool bid=true
-){
-	int book_frame_ystart = bookIndex*LEVELS;
-	int book_frame_xstart = bid? 0: CAPACITY;
-	int price_table_frame_xstart = bid? 0: 1;
+	
+	static SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]={{AS_SLOTSIZE, AS_UNIT}};
+#pragma HLS ARRAY_PARTITION variable=books dim=1 complete
+  // TODO
+	// 10 stock symbols: "AAPL", "AMZN", "GOOG",  "INTC", "MSFT",  "SPY", "TSLA", "NVDA", "AMD", "QCOM"
+	// static symbol_t symbol_map[STOCKS] = {  0x4141504c20202020, 0x414d5a4e20202020, 0x474f4f4720202020, 0x494e544320202020, 
+	// 										0x4d53465420202020, 0x5350592020202020, 0x54534c4120202020, 0x4e56444120202020, 
+	// 										0x414d442020202020, 0x51434f4d20202020};
+	static symbol_t symbol_map[STOCKS] = {0};
+#pragma HLS ARRAY_RESHAPE variable=symbol_map dim=1 complete
+	static price_depth stream_out_buffer[STOCKS][STREAMOUT_BUFFER_SIZE];
+#pragma HLS ARRAY_PARTITION variable=stream_out_buffer dim=1 complete
+	static ap_uint<STOCKS> read_req_concat=0;
+	static ap_uint<8> read_max=10;
+	
+	// control signal
+	static ap_uint<1> halt=1, en_read=0, en_clear=0, read_map=0; 
+	static char instruction = 'v';
 
-	static int heap_head=0, heap_tail=0;
+	// dataflow
+	Message message_in;
+	orderMessage ordermessage_in;
+	int index_msg, index_read;
 
-	// search existing level
-	if (bid) {
-		for (int i=0; i < LEVELS; i++){
-			price_lookup level_socket = price_table[book_frame_ystart+i][price_table_frame_xstart]
-			level_socket.orderCnt == 0 
-			|| level_socket.price == order_info.price
-		}
-	}
-}
-void order_change(bool bid=true){
-
-}
-void order_remove(bool bid=true){
-
-}
-
-void suborder_book(){
-
-}
-
-void order_book_system(
-		stream<decoded_message> &messages_stream,
-		stream<Time> &incoming_time,
-		stream<metadata> &incoming_meta,
-		stream<Time> &outgoing_time,
-		stream<metadata> &outgoing_meta,
-		stream<order> &top_bid,
-		stream<order> &top_ask,
-		orderID_t &top_bid_id,
-		orderID_t &top_ask_id)
-{
-	static sub_order book[LEVELS*STOCKS][2*CAPACITY];
-	static price_lookup price_map[LEVELS*STOCKS][2];
-	static symbol_t symbol_list[STOCKS];         // string of length 6
-
-	decoded_message msg_inbound = messages_stream.read();
-
-	order order_inbound;
-	order_inbound.price = msg_inbound.price;
-	order_inbound.size = msg_inbound.size;
-	order_inbound.orderID = msg_inbound.orderID;
-	symbol_t symbol_inbound = msg_inbound.symbol;
-	ap_uint<3> operation = msg_inbound.operation;
-
-
-	// symbol location searching
-
-	ap_uint<12> bookIndex;		// stock's correponding index in the order book, up to 4096 stocks
-	for (int i=0; i<STOCKS; i++){
-		if (symbol_inbound == symbol_list[i])
-			bookIndex = i;
-	}
-
-	// Order book modification according to the operation type
-	switch (operation)
+	// control
+	instruction = axi_instruction;
+	switch (instruction)
 	{
-	case 0:	// Change ASK
+	case 'v':	// void
 		break;
-	case 2:	// New ASK
+	case 'R':	// run
+		halt = 0;
 		break;
-	case 4:	// Remove ASK
+	case 'H':	// halt
+		halt = 1;
 		break;
-
-	case 1:	// Change BID
+	case 'r':	// read book
+		en_read = 1;
 		break;
-	case 3:	// New BID
+	case 'c':	// clear
+		en_clear = 1;
 		break;
-	case 5:	// Remove BID
+	case 's':	// update symbol map
+		read_map = 1;
 		break;
+	case 'm':	// update read max 
+		read_max = axi_read_max;
+		break;
+	case 'A': 	// config all
+		read_max = axi_read_max;
 
 	default:
 		break;
+	} 
+	instruction = 'v';
+
+
+	// read symbol mapping
+	if (en_read){
+		index_read = symbol_mapping(symbol_map, axi_read_symbol, true);
+#ifdef __DEBUG__
+			if (!(index_read>=0)&&(index_read<STOCKS)){
+				printf("Read symbol not found in the local symbol map, discard!!!!!!!!");
+			}
+#endif
+		read_req_concat = (0x1<<index_read);
 	}
 
-	// Order book access from master 
+	ROUTINE_SUBBOOKS_CONTROLLER:
+	for (int i=0; i<STOCKS; i++){
+#pragma HLS UNROLL
+		ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
+		books[i].subbook_controller(read_req);
+	}
+
+	// order symbol mapping
+	STREAM_IN_READ:
+	for (int i=0; i<axi_size; i++){
+		message_in = stream_in[i];
+		ordermessage_in.order_info.orderID = message_in.orderID;
+		ordermessage_in.order_info.size = message_in.size;
+		ordermessage_in.order_info.price = message_in.price;
+		ordermessage_in.operation = message_in.operation;
+		ordermessage_in.side = message_in.side;
+		index_msg = symbol_mapping(symbol_map, message_in.symbol, false);
+#ifdef __DEBUG__
+			if (!(index_msg>=0)&&(index_msg<STOCKS)){
+				printf("Input symbol not found in the local symbol map, discard!!!!!!!!");
+			}
+#endif
+		ROUTINE_SUBBOOKS_NEWORDER:
+		for (int i=0; i<STOCKS; i++){
+#pragma HLS UNROLL
+			transMessage transmessage_in = {ordermessage_in, {((index_msg==i)&&(!halt))?1:0}};
+			ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
+			books[i].book_maintain(transmessage_in);
+		}
+		
+	}
+	// if (read_map){
+	// 	READ_MAP:
+	// 	for (int i=0; i<STOCKS; i++){
+	// 		stream_out[i].price = (price_t)symbol_map[i];
+	// 	}
+	// 	read_map = 0;
+	// }
+	if (en_read){
+		ROUTINE_SUBBOOKS_READ:
+		for (int i=0; i<STOCKS; i++){
+	#pragma HLS UNROLL
+			ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
+			books[i].book_read(read_max, stream_out_buffer[i]);
+		}
+		READ_STREAM_BUFFER:
+		for (int i=0; i<(2*read_max)+2; i++){
+			stream_out[i] = stream_out_buffer[index_read][i];
+		}
+		en_read = 0;
+		read_req_concat = 0;
+	}
 
 }
+
+
+int symbol_mapping(
+	symbol_t symbol_map[STOCKS],
+	symbol_t symbol,
+	bool read_req
+){
+#pragma HLS INLINE off
+	static char num = 0;
+	int index=-1;
+	SYMBOL_MAPPING:
+	for (int i=0; i<STOCKS; i++){
+#pragma HLS UNROLL
+		if (symbol_map[i]==symbol){
+			index = i;
+		}
+	}
+	if ((index == -1)&&(num != STOCKS)&&(!read_req)){
+		index = num;
+		symbol_map[num++] = symbol;
+	}
+	return index;
+}
+
+// void routine_subbooks(
+// 	ap_uint<8> read_max,
+// 	ap_uint<STOCKS> &read_req_concat,
+	
+// 	SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS],
+
+// 	hls::stream<price_depth> &stream_out
+// ){
+// 	ROUTINE_SUBBOOKS:
+// 	for (int i=0; i<STOCKS; i++){
+// #pragma HLS UNROLL
+// 		ap_uint<1> read_req = (read_req_concat>>i) & 0x1;
+// 		books[i].suborder_book(ordermessage_in, read_max, read_req, stream_out);
+// 	}
+// 	read_req_concat = 0;
+// }
+
+// void update_subbooks(
+// 	int index_msg,
+// 	SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS],
+
+// 	orderMessage ordermessage_in
+// ){
+// 	// update books on message event
+// 	UPDATE_SUBBOOKS:
+// 	for (int i=0; i<STOCKS; i++){
+// #pragma HLS UNROLL
+// 		if (i == index_msg){
+// 			books[i].book_maintain(ordermessage_in);
+// 		}
+// 	}
+
+// }
+
+// void init_books(
+// 	int slotsize,
+// 	float unit,
+// 	SubOrderBook<AS_RANGE, AS_CHAIN_LEVELS> books[STOCKS]
+// ){
+// 	for (int i=0; i<STOCKS; i++){
+// 		books[i].config(slotsize, unit);
+// 	}
+// }
+

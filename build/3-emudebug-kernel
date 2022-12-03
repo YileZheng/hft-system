@@ -1,0 +1,6 @@
+# run `xgdb`
+# in xgdb prompt execute following commands
+
+file /tmp/sdx/$uid/$pid/NUM.DWARF
+
+target remote :<num>
