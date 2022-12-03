@@ -1,0 +1,3 @@
+
+FILES_LOAD=app.exe a.xclbin order_book.xclbin BOOT.BIN Image system.dtb boot.scr xrt.ini platform_desc.txt init.sh
+FILES_RESULT=/mnt/*summary* /mnt/timeline_trace.csv
