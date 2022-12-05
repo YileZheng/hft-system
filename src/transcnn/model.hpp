@@ -9,7 +9,7 @@
 #define INPUT_SIZE 4
 
 #define COUT 4
-#define KERNEL_SIZE 12
+#define KERNEL_SIZE 7
 #define NUM_HEAD 4
 #define FEED_FORWARD_SIZE 4
 #define HEAD_DIM INPUT_SIZE/NUM_HEAD
@@ -20,7 +20,7 @@
 
 typedef float pricebase_t;
 
-int model(
+void model(
     pricebase_t price[INPUT_LENGTH][INPUT_SIZE],    // ACP
     pricebase_t prediction[OUTPUT_LENGTH]       // ACE
 );
@@ -40,7 +40,8 @@ void multihead_attn(
     pricebase_t win[3*INPUT_SIZE][INPUT_SIZE], 
     pricebase_t bin[3*INPUT_SIZE], 
     pricebase_t wout[INPUT_SIZE][INPUT_SIZE], 
-    pricebase_t bout[INPUT_SIZE]
+    pricebase_t bout[INPUT_SIZE],
+	int instan
 );
 
 template<int D0, int D1>
@@ -56,7 +57,7 @@ void add_norm(
         pricebase_t mn = 0, sd = 0;
         pricebase_t tmpv[D1];
 #pragma HLS DATAFLOW
-#pragma HLS UNROLL factor=LENGTHWISE_UNROLL
+#pragma HLS UNROLL factor=4
         for (int x = 0; x < D1; x++){
             pricebase_t v = tin1[y][x] + tin2[y][x];
             mn += v;
@@ -65,7 +66,7 @@ void add_norm(
         mn = mn / D1;
         for (int xx = 0; xx < D1; xx++){
             pricebase_t vv = tmpv[xx];
-            sd += (vv - mn) ^ 2;
+            sd += hls::powf((vv - mn), 2);
             tmpv[xx] -= mn;
 
         }
@@ -145,7 +146,7 @@ void linearT(
     */
 #pragma HLS INLINE 
     for (int iy = 0; iy < D0; iy++){
-# pragma HLS UNROLL factor=LENGTHWISE_UNROLL
+# pragma HLS UNROLL factor=4
         for (int ix = 0; ix < D1; ix++){
 # pragma HLS UNROLL factor=4
             pricebase_t tmp = b[ix];
@@ -189,7 +190,7 @@ void matmul(
 
 template <int D0, int DC> 
 void elelinear(
-    pricebase_t tou[D0][DC], 
+    pricebase_t tout[D0][DC],
     pricebase_t tin[D0][DC], 
     pricebase_t w[DC], 
     pricebase_t b[DC]
@@ -217,7 +218,7 @@ void activation(
     */
 #pragma HLS INLINE 
     for (int iy = 0; iy < D0; iy++){
-        for (int ix = 0; ix < DC; ix++){
+        for (int ix = 0; ix < D1; ix++){
 # pragma HLS UNROLL factor=4
             pricebase_t v = tin[iy][ix];
             tout[iy][ix] = (v > 0)? v : 0;
@@ -225,27 +226,30 @@ void activation(
     }
 }
 
-template<int D0, int D1>
+template<int D0, int D1, int D2>
 void softmax(
-    pricebase_t tout[D0][D1], 
-    pricebase_t tin[D0][D1]
+    pricebase_t tout[D0][D1][D2],
+    pricebase_t tin[D0][D1][D2]
 ){
     pricebase_t tmp[D1];
-    SOFTMAX_Y:
-    for (int y = 0; y < D0; y++){
-        pricebase_t sum=0;
 
-        SOFTMAX_EXP_SUM:
-        for (int x = 0; x < D1; x++){
-            pricebase_t v = hls::expf(tin[y][x]);
-            sum += v;
-            tmp[x] = v;
-        }
+    for (int c = 0; c < D0; c++){
+		SOFTMAX_Y:
+		for (int y = 0; y < D1; y++){
+			pricebase_t sum=0;
 
-        SOFTMAX_DIV:
-        for (int xx = 0; xx < D1; xx++){
-            tout[y][xx] = tmp[xx] / sum;
-        }
+			SOFTMAX_EXP_SUM:
+			for (int x = 0; x < D2; x++){
+				pricebase_t v = hls::expf(tin[c][y][x]);
+				sum += v;
+				tmp[x] = v;
+			}
+
+			SOFTMAX_DIV:
+			for (int xx = 0; xx < D2; xx++){
+				tout[c][y][xx] = tmp[xx] / sum;
+			}
+		}
     }
 }
 
