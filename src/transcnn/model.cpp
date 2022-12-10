@@ -126,7 +126,8 @@ void linearT(
     for (int iy = 0; iy < D0; iy++){
 // pragma HLS UNROLL factor=4
         for (int ix = 0; ix < D1; ix++){
-#pragma HLS UNROLL factor=4
+#pragma HLS UNROLL
+#pragma HLS PIPELINE
             pricebase_t tmp = b[ix];
             for (int i = 0; i < DC; i++){
                 tmp += tin1[iy][i] * tin2[ix][i];
@@ -153,9 +154,9 @@ void matmul(
     */
 //#pragma HLS INLINE
     for (int iy = 0; iy < D0; iy++){
-#// pragma HLS UNROLL factor=4
+//#pragma HLS UNROLL factor=4
         for (int ix = 0; ix < D1; ix++){
-#// pragma HLS UNROLL factor=4
+//#pragma HLS UNROLL factor=4
             pricebase_t tmp = 0;
             for (int i = 0; i < DC; i++){
                 tmp += tin1[iy][i] * tin2[i][ix];
@@ -179,7 +180,7 @@ void elelinear(
 //#pragma HLS INLINE
     for (int iy = 0; iy < D0; iy++){
         for (int ix = 0; ix < DC; ix++){
-#// pragma HLS UNROLL factor=4
+// pragma HLS UNROLL factor=4
             tout[iy][ix] = tin[iy][ix] * w[ix] + b[ix];
         }
     }
@@ -197,7 +198,7 @@ void activation(
 //#pragma HLS INLINE
     for (int iy = 0; iy < D0; iy++){
         for (int ix = 0; ix < D1; ix++){
-#// pragma HLS UNROLL factor=4
+#pragma HLS UNROLL factor=4
             pricebase_t v = tin[iy][ix];
             tout[iy][ix] = (v > 0)? v : 0;
         }
@@ -313,6 +314,7 @@ void crop_pred(
 	pricebase_t tin[1][INPUT_LENGTH-KERNEL_SIZE+1+OUTPUT_LENGTH]
 ){
     for (int io = 0; io < OUTPUT_LENGTH; io++){
+#pragma HLS PIPELINE
         tout[io] = tin[0][INPUT_LENGTH-KERNEL_SIZE+1+io];
     }
 }
@@ -504,6 +506,7 @@ void multiattn_qscaling(
 //#pragma HLS UNROLL factor=4
         for (int il = 0; il < INPUT_LENGTH; il++){
 // //#pragma HLS UNROLL factor=4
+#pragma HLS PIPELINE
             for (int ihd = 0; ihd < HEAD_DIM; ihd++){
                 qs[il][ih*HEAD_DIM+ihd] = q[il][ih*HEAD_DIM+ihd] * scaling;
             }
