@@ -29,6 +29,7 @@ void add_norm(
     for (int y = 0; y < D0; y++){
 //#pragma HLS UNROLL factor=4
 ////#pragma HLS DATAFLOW
+#pragma HLS PIPELINE
         pricebase_t mn = 0, sd = 0;
         pricebase_t tmpv[D1], tmpvv[D1];
         for (int x = 0; x < D1; x++){
@@ -61,11 +62,13 @@ void conv2d(
     pricebase_t k[KCO][KCI][KY][KX],
     pricebase_t b[KCO]
 ){
+#pragma HLS INLINE off
     int XO = XI - KX + 1;
     int YO = YI - KY + 1;
     for (int co = 0; co < KCO; co++){
         for (int xo = 0; xo < XO; xo++){
             for (int yo = 0; yo < YO; yo++){
+#pragma HLS PIPELINE
                 pricebase_t tmp = b[co];
                 for (int kci = 0; kci < KCI; kci++){
                     for (int kx = 0; kx < KX; kx++){
@@ -88,9 +91,11 @@ void conv1d(
     pricebase_t k[KCO][KCI][KX],
     pricebase_t b[KCO]
 ){
+#pragma HLS INLINE off
     int XO = XI-KX+1;
     for (int co = 0; co < KCO; co++){
         for (int xo = 0; xo < XO; xo++){
+#pragma HLS PIPELINE
             pricebase_t tmp = b[co];
             for (int kci = 0; kci < KCI; kci++){
                 for (int kx = 0; kx < KX; kx++){
@@ -110,6 +115,7 @@ void linearT(
     pricebase_t tin2[D1][DC],
     pricebase_t b[D1]
 ){
+#pragma HLS INLINE off
     /*
     shape:
     tin1: (d0, dc)
@@ -118,9 +124,9 @@ void linearT(
     tin1 (d0 X dc) x tin2.T (dc X d1) = tout (d0, d1)
     */
     for (int iy = 0; iy < D0; iy++){
-#// pragma HLS UNROLL factor=4
+// pragma HLS UNROLL factor=4
         for (int ix = 0; ix < D1; ix++){
-#// pragma HLS UNROLL factor=4
+#pragma HLS UNROLL factor=4
             pricebase_t tmp = b[ix];
             for (int i = 0; i < DC; i++){
                 tmp += tin1[iy][i] * tin2[ix][i];
@@ -203,6 +209,7 @@ void softmax(
     pricebase_t tout[D0][D1][D2],
     pricebase_t tin[D0][D1][D2]
 ){
+#pragma HLS PIPELINE off
     pricebase_t tmp[D1];
 
     for (int c = 0; c < D0; c++){
@@ -232,7 +239,7 @@ void squeeze_padding(
 ){
     PADDING:
     for (int pc = 0; pc < COUT; pc++){
-//#pragma HLS PIPELINE off
+#pragma HLS PIPELINE off
     	for (int pi = 0; pi < INPUT_LENGTH; pi++){
     		tout[pc][pi] = tin[pc][pi][0];
     	}
@@ -288,6 +295,8 @@ void model(
     pricebase_t ctmp0pad[COUT][INPUT_LENGTH+OUTPUT_LENGTH], ctmp1[COUT][INPUT_LENGTH-KERNEL_SIZE+1+OUTPUT_LENGTH];
     pricebase_t ctmp0phy[COUT][INPUT_LENGTH][1];
     pricebase_t out_pred[1][INPUT_LENGTH-KERNEL_SIZE+1+OUTPUT_LENGTH];
+#pragma HLS ARRAY_PARTITION variable=ctmp0pad cyclic factor=7 dim=2
+#pragma HLS ARRAY_PARTITION variable=ctmp1 cyclic factor=4 dim=1
 
     conv2d<COUT, INPUT_SIZE, INPUT_LENGTH, COUT, 1, INPUT_SIZE, 1>(ctmp0phy, outChannels, compressw, compressb);
     squeeze_padding(ctmp0pad, ctmp0phy);
@@ -328,6 +337,7 @@ void encoder_pricesplit(
 	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE],
 	pricebase_t tin[INPUT_LENGTH][INPUT_SIZE]
 ){
+#pragma HLS PIPELINE off
 	for (int y = 0; y < INPUT_LENGTH; y++){
 //#pragma PIPELINE off
 		for (int x = 0; x < INPUT_SIZE; x++){
@@ -403,6 +413,7 @@ void multihead_attn(
     pricebase_t wout[INPUT_SIZE][INPUT_SIZE],
     pricebase_t bout[INPUT_SIZE]
 ){
+#pragma HLS INLINE off
 
     static pricebase_t scaling = powf(HEAD_DIM, -0.5);
 
@@ -450,10 +461,11 @@ void feed_forward(
     pricebase_t w2[INPUT_SIZE][FEED_FORWARD_SIZE],
     pricebase_t b2[INPUT_SIZE]
 ){
+#pragma HLS INLINE off
 //#pragma HLS DATAFLOW
     pricebase_t ttmp0[INPUT_LENGTH][FEED_FORWARD_SIZE];
     pricebase_t ttmp1[INPUT_LENGTH][FEED_FORWARD_SIZE];
-//#pragma HLS ARRAY_PARTITION variable=ttmp1 cyclic factor=4 dim=1
+#pragma HLS ARRAY_PARTITION variable=ttmp1 complete dim=2
     linearT<INPUT_LENGTH, FEED_FORWARD_SIZE, INPUT_SIZE>(ttmp0, tin, w1, b1);
     activation<INPUT_LENGTH, FEED_FORWARD_SIZE>(ttmp1, ttmp0);
     linearT<INPUT_LENGTH, INPUT_SIZE, FEED_FORWARD_SIZE>(tout, ttmp1, w2, b2);
@@ -468,15 +480,6 @@ void multiattn_seperate_qkv(
 ){
 	MULTIHEAD_QKV:
 	for (int y = 0; y < INPUT_LENGTH; y++){
-//		for (int x = 0; x < 3 * INPUT_SIZE; x++){
-//			if (x < INPUT_SIZE){
-//				q[y][x] = tin[y][x];
-//			}else if (x < 2*INPUT_SIZE){
-//				k[y][x] = tin[y][x];
-//			}else{
-//				v[y][x] = tin[y][x];
-//			}
-//		}
 #pragma HLS PIPELINE off
 		for (int x = 0; x < INPUT_SIZE; x++){
 			q[y][x] = tin[y][x];
@@ -519,7 +522,8 @@ void multiattn_qxk(
         // unroll by the number of heads
         for (int iy0 = 0; iy0 < INPUT_LENGTH; iy0++){
             for (int ix0 = 0; ix0 < INPUT_LENGTH; ix0++){
- #pragma HLS UNROLL factor=4
+#pragma HLS UNROLL factor=4
+#pragma HLS PIPELINE
                 pricebase_t vv = 0;
                 for (int ihd0 = 0; ihd0 < HEAD_DIM; ihd0++){
                     vv += qs[iy0][ih0*HEAD_DIM+ihd0] * k[ix0][ih0*HEAD_DIM+ihd0];
