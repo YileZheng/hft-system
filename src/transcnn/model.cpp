@@ -284,7 +284,7 @@ void model(
 ////#pragma HLS ARRAY_PARTITION variable=telinear2w complete dim=1
 ////#pragma HLS ARRAY_PARTITION variable=telinear2b complete dim=1
 
-//#pragma HLS DATAFLOW
+#pragma HLS DATAFLOW
     pricebase_t outChannels[COUT][INPUT_LENGTH][INPUT_SIZE];
 //#pragma HLS ARRAY_PARTITION variable=outChannels complete dim=1
 
@@ -324,7 +324,7 @@ void encoder(
 	pricebase_t price[INPUT_LENGTH][INPUT_SIZE],
 	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE]
 ){
-//#pragma HLS DATAFLOW
+#pragma HLS DATAFLOW
 
 	pricebase_t price_split[COUT][INPUT_LENGTH][INPUT_SIZE];
 #pragma HLS ARRAY_PARTITION variable=price_split complete dim=1
@@ -386,7 +386,7 @@ void encoderlayer(
 	pricebase_t telinear2b[INPUT_SIZE]
 ){
 
-//#pragma HLS DATAFLOW
+#pragma HLS DATAFLOW
 	pricebase_t tmp0[INPUT_LENGTH][INPUT_SIZE], tmp1[INPUT_LENGTH][INPUT_SIZE], tmp2[INPUT_LENGTH][INPUT_SIZE];
 	pricebase_t tmpb01[INPUT_LENGTH][INPUT_SIZE], tmpb02[INPUT_LENGTH][INPUT_SIZE];
 	pricebase_t tmpb11[INPUT_LENGTH][INPUT_SIZE], tmpb12[INPUT_LENGTH][INPUT_SIZE];
