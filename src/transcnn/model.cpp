@@ -415,12 +415,13 @@ void multihead_attn(
 
 //#pragma HLS ARRAY_PARTITION variable=q block factor=4 dim=2
 //#pragma HLS ARRAY_PARTITION variable=qs block factor=4 dim=2
-//#pragma HLS ARRAY_PARTITION variable=k block factor=4 dim=1
+#pragma HLS ARRAY_PARTITION variable=k cyclic factor=4 dim=1
 //#pragma HLS ARRAY_PARTITION variable=qk cyclic factor=4 dim=1
 #pragma HLS ARRAY_PARTITION variable=qks cyclic factor=4 dim=1
 #pragma HLS ARRAY_PARTITION variable=qks cyclic factor=4 dim=2
 //#pragma HLS ARRAY_PARTITION variable=v block factor=4 dim=2
 #pragma HLS ARRAY_PARTITION variable=mmv block factor=4 dim=2
+#pragma HLS ARRAY_PARTITION variable=ttmp0 block factor=3 dim=2
 
     // Input projection
     linearT<INPUT_LENGTH, 3*INPUT_SIZE, INPUT_SIZE>(ttmp0, tin, win, bin);
@@ -467,14 +468,24 @@ void multiattn_seperate_qkv(
 ){
 	MULTIHEAD_QKV:
 	for (int y = 0; y < INPUT_LENGTH; y++){
-		for (int x = 0; x < 3 * INPUT_SIZE; x++){
-			if (x < INPUT_SIZE){
-				q[y][x] = tin[y][x];
-			}else if (x < 2*INPUT_SIZE){
-				k[y][x] = tin[y][x];
-			}else{
-				v[y][x] = tin[y][x];
-			}
+//		for (int x = 0; x < 3 * INPUT_SIZE; x++){
+//			if (x < INPUT_SIZE){
+//				q[y][x] = tin[y][x];
+//			}else if (x < 2*INPUT_SIZE){
+//				k[y][x] = tin[y][x];
+//			}else{
+//				v[y][x] = tin[y][x];
+//			}
+//		}
+#pragma HLS PIPELINE off
+		for (int x = 0; x < INPUT_SIZE; x++){
+			q[y][x] = tin[y][x];
+		}
+		for (int xx = INPUT_SIZE; xx < 2 * INPUT_SIZE; xx++){
+			k[y][xx] = tin[y][xx];
+		}
+		for (int xxx = 2 * INPUT_SIZE; xxx < 3 * INPUT_SIZE; xxx++){
+			v[y][xxx] = tin[y][xxx];
 		}
 	}
 }

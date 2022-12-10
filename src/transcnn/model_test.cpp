@@ -53,8 +53,8 @@ bool approx_equal(
 int main()
 {
     string data_dir("/home/yzhengbv/00-data/git/hft-system/data/modelio/");
-	string input_path(data_dir+"input.csv");
-	string output_path(data_dir+"output_pmodel.csv");
+	string input_path(data_dir+"input_s.csv");
+	string output_path(data_dir+"output_pmodel_s.csv");
 	string result_path("result.csv");
 	string answer_path("answer.csv");
 
