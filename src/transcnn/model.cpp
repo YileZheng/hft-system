@@ -253,7 +253,7 @@ void squeeze_padding(
 
 
 void model(
-    pricebase_t price[INPUT_LENGTH][INPUT_SIZE],    // ACP
+    pricebase_t price[INPUT_LENGTH*INPUT_SIZE],    // ACP
     pricebase_t prediction[OUTPUT_LENGTH]       // ACE
 ){
 
@@ -343,7 +343,7 @@ void encoder_pricesplit(
 	for (int y = 0; y < INPUT_LENGTH; y++){
 //#pragma PIPELINE off
 		for (int x = 0; x < INPUT_SIZE; x++){
-			pricebase_t v = tin[y][x];
+			pricebase_t v = tin[y * INPUT_SIZE + x];
 //#pragma HLS UNROLL
 			for (int c = 0; c < COUT; c++){
 				tout[c][y][x] = v;

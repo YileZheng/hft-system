@@ -18,14 +18,14 @@ vector<pricebase_t> slicing(vector<pricebase_t>& arr, int X, int Y);
 string concat_string(vector<pricebase_t> vin, std::string delimiter);
 
 
-template <typename T, int D0, int D1>
+template <typename T, int D0, int D1>  // changed to 1d array
 void vector1d2array2d(
     vector<T>   vin,
-    T arr[D0][D1]
+    T arr[D0*D1]
 ){
     for (int y = 0; y < D0; y++){
         for (int x = 0; x < D1; x++){
-            arr[y][x] = vin[y*D1 + x];
+            arr[y * D1 + x] = vin[y*D1 + x];
         }
     }
 }

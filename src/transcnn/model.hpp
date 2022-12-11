@@ -37,7 +37,7 @@
 typedef float pricebase_t;
 
 void model(
-    pricebase_t price[INPUT_LENGTH][INPUT_SIZE],    // ACP
+    pricebase_t price[INPUT_LENGTH*INPUT_SIZE],    // ACP
     pricebase_t prediction[OUTPUT_LENGTH]       // ACE
 );
 
