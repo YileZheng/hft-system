@@ -62,8 +62,6 @@ typedef uint32_t u32;
 #define KRNL_CONF_ADDR_B_DATA       0x1c
 #define KRNL_CONF_ADDR_AP_CTRL      0x00
 #define KRNL_REG_BASE_ADDR          0xA0000000
-#define AXI_SGNL_GPIO_ADDR          0xA0020000
-#define TRANSLEN_GPIO_ADDR          0xA0010000
 /* transfer related definitions */
 #define RD_ADDR                     0x10000000
 #define WR_ADDR                     0x20000000
@@ -76,14 +74,15 @@ vector<pricebase_t> split_string(std::string s,std::string delimiter);
 vector<pricebase_t> slicing(vector<pricebase_t>& arr, int X, int Y);
 string concat_string(vector<pricebase_t> vin, std::string delimiter);
 
-template <typename T, int D0, int D1>
+
+template <typename T, int D0, int D1>  // changed to 1d array
 void vector1d2array1d(
     vector<T>   vin,
-    T arr[D0][D1]
+    T* arr
 ){
-    for (int y = 0; y < D0; y++){
+    for (int y = 0; y < D0; y++){ 
         for (int x = 0; x < D1; x++){
-            arr[y*D1+x] = vin[y*D1 + x];
+            arr[y * D1 + x] = vin[y*D1 + x];
         }
     }
 }
@@ -91,12 +90,12 @@ void vector1d2array1d(
 template <typename T, int D0>
 bool approx_equal(
     vector<T>   vin,
-    T arr[D0]
+    T* arr
 ){
     float eps = 5e-4;
     assert(vin.size() == D0);
     for (int i = 0; i < D0; i++){
-        if (abs(vin[i] - arr[i]) > eps){
+        if ((abs(vin[i] - arr[i]) > eps) && (arr[i] == arr[i])){  // equal and arr is not nan
             cout << "Comparison wrong: " << endl;
             cout << "Answer" << '\t' << "Outputs" << endl;
             for (int ii = 0; ii < D0; ii++)
@@ -113,11 +112,9 @@ int main(int argc, char **argv)
 
     // int dh = open("/dev/mem", O_RDWR | O_SYNC);
     int dh = open("/dev/mem", O_RDWR);
-    uint* krnl_reg_base = mmap(NULL, 65536, PROT_READ | PROT_WRITE, MAP_SHARED, dh, KRNL_REG_BASE_ADDR);
-    uint* rd_addr       = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_SHARED, dh, RD_ADDR);
-    uint* wr_addr       = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_SHARED, dh, WR_ADDR);
-    uint* axi_sgnl_gpio = mmap(NULL, 65536, PROT_READ | PROT_WRITE, MAP_SHARED, dh, AXI_SGNL_GPIO_ADDR);
-    uint* translen_gpio = mmap(NULL, 65536, PROT_READ | PROT_WRITE, MAP_SHARED, dh, TRANSLEN_GPIO_ADDR);
+    pricebase_t* krnl_reg_base = (pricebase_t*)mmap(NULL, 65536, PROT_READ | PROT_WRITE, MAP_SHARED, dh, KRNL_REG_BASE_ADDR);
+    pricebase_t* rd_addr       = (pricebase_t*)mmap(NULL, 4*1024, PROT_READ | PROT_WRITE, MAP_SHARED, dh, RD_ADDR);
+    pricebase_t* wr_addr       = (pricebase_t*)mmap(NULL, 4*1024, PROT_READ | PROT_WRITE, MAP_SHARED, dh, WR_ADDR);
 
     string data_dir("data/");
 	string input_path(data_dir+"input_s.csv");
@@ -149,6 +146,7 @@ int main(int argc, char **argv)
     int id = 0;
 	char bufi[2096] = {0};
 	char bufo[1024] = {0};
+	pricebase_t* pricein, predout;
 	while (inputs.getline(bufi, sizeof(bufi), '\n')){
 		// Read Data from the files and convert from string into numeric values (1D array of shape (INPUT_LENGTH * INPUT_SIZE))
 		iline = string(bufi);

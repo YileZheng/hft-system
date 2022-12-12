@@ -29,7 +29,7 @@ void add_norm(
     for (int y = 0; y < D0; y++){
 //#pragma HLS UNROLL factor=4
 ////#pragma HLS DATAFLOW
-#pragma HLS PIPELINE
+#pragma HLS PIPELINE off
         pricebase_t mn = 0, sd = 0;
         pricebase_t tmpv[D1], tmpvv[D1];
         for (int x = 0; x < D1; x++){
@@ -66,9 +66,13 @@ void conv2d(
     int XO = XI - KX + 1;
     int YO = YI - KY + 1;
     for (int co = 0; co < KCO; co++){
+#pragma HLS UNROLL factor=4
+#pragma HLS PIPELINE off
         for (int xo = 0; xo < XO; xo++){
+#pragma HLS UNROLL factor=4
+#pragma HLS PIPELINE off
             for (int yo = 0; yo < YO; yo++){
-#pragma HLS PIPELINE
+#pragma HLS PIPELINE off
                 pricebase_t tmp = b[co];
                 for (int kci = 0; kci < KCI; kci++){
                     for (int kx = 0; kx < KX; kx++){
@@ -94,8 +98,10 @@ void conv1d(
 #pragma HLS INLINE off
     int XO = XI-KX+1;
     for (int co = 0; co < KCO; co++){
+#pragma HLS UNROLL factor=4
+#pragma HLS PIPELINE off
         for (int xo = 0; xo < XO; xo++){
-#pragma HLS PIPELINE
+#pragma HLS PIPELINE off
             pricebase_t tmp = b[co];
             for (int kci = 0; kci < KCI; kci++){
                 for (int kx = 0; kx < KX; kx++){
@@ -124,10 +130,11 @@ void linearT(
     tin1 (d0 X dc) x tin2.T (dc X d1) = tout (d0, d1)
     */
     for (int iy = 0; iy < D0; iy++){
+#pragma HLS PIPELINE off
 // pragma HLS UNROLL factor=4
         for (int ix = 0; ix < D1; ix++){
-#pragma HLS UNROLL
-#pragma HLS PIPELINE
+#pragma HLS UNROLL factor=4
+#pragma HLS PIPELINE off
             pricebase_t tmp = b[ix];
             for (int i = 0; i < DC; i++){
                 tmp += tin1[iy][i] * tin2[ix][i];
@@ -221,6 +228,7 @@ void softmax(
 
 			SOFTMAX_EXP_SUM:
 			for (int x = 0; x < D2; x++){
+#pragma HLS PIPELINE
 				pricebase_t v = hls::expf(tin[c][y][x]);
 				sum += v;
 				tmp[x] = v;
@@ -228,6 +236,7 @@ void softmax(
 
 			SOFTMAX_DIV:
 			for (int xx = 0; xx < D2; xx++){
+#pragma HLS PIPELINE
 				tout[c][y][xx] = tmp[xx] / sum;
 			}
 		}
@@ -257,40 +266,20 @@ void model(
     pricebase_t prediction[OUTPUT_LENGTH]       // ACE
 ){
 
-//#pragma HLS INTERFACE m_axi depth=4096 bundle=gmem0 port=price offset=slave
-//#pragma HLS INTERFACE m_axi depth=4096 bundle=gmem1 port=prediction offset=slave
+#pragma HLS INTERFACE m_axi depth=4096 max_read_burst_length=16 max_write_burst_length=16  bundle=gmem0 port=price offset=slave 
+#pragma HLS INTERFACE m_axi depth=4096 max_read_burst_length=16 max_write_burst_length=16 bundle=gmem1 port=prediction offset=slave
 
-//#pragma HLS INTERFACE s_axilite port=price 	bundle=control
-//#pragma HLS INTERFACE s_axilite port=prediction bundle=control
+#pragma HLS INTERFACE s_axilite port=price 	bundle=control
+#pragma HLS INTERFACE s_axilite port=prediction bundle=ccontrol
 
-// //#pragma HLS ARRAY_PARTITION variable=wx complete dim=2
-// //#pragma HLS ARRAY_PARTITION variable=wh complete dim=2
-// //#pragma HLS ARRAY_PARTITION variable=wx complete dim=2
+// #pragma HLS DATAFLOW
 
-// //#pragma HLS BIND_STORAGE variable=wx type=rom_1p
-// //#pragma HLS BIND_STORAGE variable=d0 type=rom_2p
-// //#pragma HLS BIND_STORAGE variable=d1 type=rom_2p
-
-////#pragma HLS ARRAY_PARTITION variable=teattninw complete dim=1
-////#pragma HLS ARRAY_PARTITION variable=teattninb complete dim=1
-////#pragma HLS ARRAY_PARTITION variable=teattnoutw complete dim=1
-////#pragma HLS ARRAY_PARTITION variable=teattnoutb complete dim=1
-////#pragma HLS ARRAY_PARTITION variable=tenorm1w complete dim=1
-////#pragma HLS ARRAY_PARTITION variable=tenorm1b complete dim=1
-////#pragma HLS ARRAY_PARTITION variable=tenorm2w complete dim=1
-////#pragma HLS ARRAY_PARTITION variable=tenorm2b complete dim=1
-////#pragma HLS ARRAY_PARTITION variable=telinear1w complete dim=1
-////#pragma HLS ARRAY_PARTITION variable=telinear1b complete dim=1
-////#pragma HLS ARRAY_PARTITION variable=telinear2w complete dim=1
-////#pragma HLS ARRAY_PARTITION variable=telinear2b complete dim=1
-
-#pragma HLS DATAFLOW
     pricebase_t outChannels[COUT][INPUT_LENGTH][INPUT_SIZE];
-//#pragma HLS ARRAY_PARTITION variable=outChannels complete dim=1
+#pragma HLS ARRAY_PARTITION variable=outChannels complete dim=1
+#pragma HLS ARRAY_PARTITION variable=outChannels complete dim=3
 
     // encoder
     encoder(price, outChannels);
-
 
     // decoder
     pricebase_t ctmp0pad[COUT][INPUT_LENGTH+OUTPUT_LENGTH], ctmp1[COUT][INPUT_LENGTH-KERNEL_SIZE+1+OUTPUT_LENGTH];
@@ -321,7 +310,7 @@ void crop_pred(
 
 
 void encoder(
-	pricebase_t price[INPUT_LENGTH][INPUT_SIZE],
+	pricebase_t price[INPUT_LENGTH * INPUT_SIZE],
 	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE]
 ){
 #pragma HLS DATAFLOW
@@ -337,7 +326,7 @@ void encoder(
 
 void encoder_pricesplit(
 	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE],
-	pricebase_t tin[INPUT_LENGTH][INPUT_SIZE]
+	pricebase_t tin[INPUT_LENGTH * INPUT_SIZE]
 ){
 #pragma HLS PIPELINE off
 	for (int y = 0; y < INPUT_LENGTH; y++){
@@ -397,6 +386,7 @@ void encoderlayer(
 #pragma HLS ARRAY_PARTITION variable=tmpb02 cyclic factor=4 dim=2
 #pragma HLS ARRAY_PARTITION variable=tmp0 cyclic factor=4 dim=2
 #pragma HLS ARRAY_PARTITION variable=tmp2 cyclic factor=4 dim=2
+#pragma HLS ARRAY_PARTITION variable=tmp1 cyclic factor=4 dim=2
 
 	split<INPUT_LENGTH, INPUT_SIZE>(price, tmpb01, tmpb02);
 	multihead_attn(tmp0, tmpb01, teattninw, teattninb, teattnoutw, teattnoutb);
@@ -415,11 +405,11 @@ void multihead_attn(
     pricebase_t wout[INPUT_SIZE][INPUT_SIZE],
     pricebase_t bout[INPUT_SIZE]
 ){
-#pragma HLS INLINE off
+#pragma HLS INLINE 
 
     static pricebase_t scaling = powf(HEAD_DIM, -0.5);
 
-//#pragma HLS DATAFLOW
+#pragma HLS DATAFLOW
 
     pricebase_t ttmp0[INPUT_LENGTH][3*INPUT_SIZE];
     pricebase_t qs[INPUT_LENGTH][INPUT_SIZE], q[INPUT_LENGTH][INPUT_SIZE], k[INPUT_LENGTH][INPUT_SIZE], v[INPUT_LENGTH][INPUT_SIZE];
@@ -429,12 +419,15 @@ void multihead_attn(
 //#pragma HLS ARRAY_PARTITION variable=q block factor=4 dim=2
 //#pragma HLS ARRAY_PARTITION variable=qs block factor=4 dim=2
 #pragma HLS ARRAY_PARTITION variable=k cyclic factor=4 dim=1
-//#pragma HLS ARRAY_PARTITION variable=qk cyclic factor=4 dim=1
+#pragma HLS ARRAY_PARTITION variable=qk cyclic factor=4 dim=3  
+#pragma HLS ARRAY_PARTITION variable=qk cyclic factor=4 dim=2
 #pragma HLS ARRAY_PARTITION variable=qks cyclic factor=4 dim=1
 #pragma HLS ARRAY_PARTITION variable=qks cyclic factor=4 dim=2
-//#pragma HLS ARRAY_PARTITION variable=v block factor=4 dim=2
+// #pragma HLS ARRAY_PARTITION variable=qks cyclic factor=8 dim=3
+// #pragma HLS ARRAY_PARTITION variable=v complete dim=1
 #pragma HLS ARRAY_PARTITION variable=mmv block factor=4 dim=2
-#pragma HLS ARRAY_PARTITION variable=ttmp0 block factor=3 dim=2
+// #pragma HLS ARRAY_PARTITION variable=ttmp0 block factor=3 dim=2
+#pragma HLS ARRAY_PARTITION variable=ttmp0 complete dim=2
 
     // Input projection
     linearT<INPUT_LENGTH, 3*INPUT_SIZE, INPUT_SIZE>(ttmp0, tin, win, bin);
@@ -463,11 +456,12 @@ void feed_forward(
     pricebase_t w2[INPUT_SIZE][FEED_FORWARD_SIZE],
     pricebase_t b2[INPUT_SIZE]
 ){
-#pragma HLS INLINE off
+#pragma HLS INLINE 
 //#pragma HLS DATAFLOW
     pricebase_t ttmp0[INPUT_LENGTH][FEED_FORWARD_SIZE];
     pricebase_t ttmp1[INPUT_LENGTH][FEED_FORWARD_SIZE];
 #pragma HLS ARRAY_PARTITION variable=ttmp1 complete dim=2
+#pragma HLS ARRAY_PARTITION variable=ttmp0 cyclic factor=4 dim=2
     linearT<INPUT_LENGTH, FEED_FORWARD_SIZE, INPUT_SIZE>(ttmp0, tin, w1, b1);
     activation<INPUT_LENGTH, FEED_FORWARD_SIZE>(ttmp1, ttmp0);
     linearT<INPUT_LENGTH, INPUT_SIZE, FEED_FORWARD_SIZE>(tout, ttmp1, w2, b2);
@@ -484,13 +478,16 @@ void multiattn_seperate_qkv(
 	for (int y = 0; y < INPUT_LENGTH; y++){
 #pragma HLS PIPELINE off
 		for (int x = 0; x < INPUT_SIZE; x++){
+#pragma HLS PIPELINE
 			q[y][x] = tin[y][x];
 		}
-		for (int xx = INPUT_SIZE; xx < 2 * INPUT_SIZE; xx++){
-			k[y][xx] = tin[y][xx];
+		for (int xx = 0; xx < INPUT_SIZE; xx++){
+#pragma HLS PIPELINE
+			k[y][xx] = tin[y][xx + INPUT_SIZE];
 		}
-		for (int xxx = 2 * INPUT_SIZE; xxx < 3 * INPUT_SIZE; xxx++){
-			v[y][xxx] = tin[y][xxx];
+		for (int xxx = 0; xxx < INPUT_SIZE; xxx++){
+#pragma HLS PIPELINE
+			v[y][xxx] = tin[y][xxx + 2*INPUT_SIZE];
 		}
 	}
 }
@@ -505,7 +502,7 @@ void multiattn_qscaling(
     for (int ih = 0; ih < NUM_HEAD; ih++){
 //#pragma HLS UNROLL factor=4
         for (int il = 0; il < INPUT_LENGTH; il++){
-// //#pragma HLS UNROLL factor=4
+// #pragma HLS UNROLL factor=4
 #pragma HLS PIPELINE
             for (int ihd = 0; ihd < HEAD_DIM; ihd++){
                 qs[il][ih*HEAD_DIM+ihd] = q[il][ih*HEAD_DIM+ihd] * scaling;
@@ -546,7 +543,7 @@ void multiattn_xv(
 
     MULTIHEAD_MMV:
     for (int ih1 = 0; ih1 < NUM_HEAD; ih1++){
-#pragma HLS UNROLL factor=4
+// #pragma HLS UNROLL factor=4
         for (int iy1 = 0; iy1 < INPUT_LENGTH; iy1++){
 #pragma HLS UNROLL factor=4
             for (int ix1 = 0; ix1 < HEAD_DIM; ix1++){

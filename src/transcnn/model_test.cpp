@@ -19,11 +19,11 @@ string concat_string(vector<pricebase_t> vin, std::string delimiter);
 
 
 template <typename T, int D0, int D1>  // changed to 1d array
-void vector1d2array2d(
+void vector1d2array1d(
     vector<T>   vin,
-    T arr[D0*D1]
+    T* arr
 ){
-    for (int y = 0; y < D0; y++){
+    for (int y = 0; y < D0; y++){ 
         for (int x = 0; x < D1; x++){
             arr[y * D1 + x] = vin[y*D1 + x];
         }
@@ -33,12 +33,12 @@ void vector1d2array2d(
 template <typename T, int D0>
 bool approx_equal(
     vector<T>   vin,
-    T arr[D0]
+    T* arr
 ){
     float eps = 5e-4;
     assert(vin.size() == D0);
     for (int i = 0; i < D0; i++){
-        if (abs(vin[i] - arr[i]) > eps){
+        if ((abs(vin[i] - arr[i]) > eps) && (arr[i] == arr[i])){  // equal and arr is not nan
             cout << "Comparison wrong: " << endl;
             cout << "Answer" << '\t' << "Outputs" << endl;
             for (int ii = 0; ii < D0; ii++)
@@ -77,7 +77,7 @@ int main()
 	
 	string iline, oline;
 	vector<pricebase_t> line_split, line_splito;
-    pricebase_t pricein[INPUT_LENGTH][INPUT_SIZE];
+    pricebase_t pricein[INPUT_LENGTH*INPUT_SIZE];
     pricebase_t predout[OUTPUT_LENGTH];
 
 	int retval=0;
@@ -93,7 +93,7 @@ int main()
 
 		line_splito = split_string(oline, string(","));
 		line_split = split_string(iline, string(","));
-        vector1d2array2d<pricebase_t, INPUT_LENGTH, INPUT_SIZE>(line_split, pricein);
+        vector1d2array1d<pricebase_t, INPUT_LENGTH, INPUT_SIZE>(line_split, pricein);
 
         start = clock();
         model(pricein, predout);
@@ -101,7 +101,7 @@ int main()
 		elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000000;
 
 		answer << concat_string(line_splito, string(",")) << std::endl;
-		result << concat_string(vector<pricebase_t>(predout, predout+ sizeof(predout)/sizeof(pricebase_t)), string(",")) << std::endl;
+		result << concat_string(vector<pricebase_t>(predout, predout+ OUTPUT_LENGTH), string(",")) << std::endl;
 		std::cout << "Line " << id; 
 
         if (!approx_equal<pricebase_t, OUTPUT_LENGTH>(slicing(line_splito,  line_splito.size()-OUTPUT_LENGTH, line_splito.size()-1), predout)){
