@@ -1,7 +1,9 @@
 
 #ifndef __TRANSCNN_HPP__
 #define __TRANSCNN_HPP__
-
+#include "/home/yzhengbv/Xilinx/Vitis_HLS/2022.1/include/gmp.h"
+#define __gmp_const const
+#include <mpfr.h>
 #include "hls_math.h"
 
 #define INPUT_LENGTH 24
@@ -12,9 +14,11 @@
 #define KERNEL_SIZE 7
 #define NUM_HEAD 4
 #define FEED_FORWARD_SIZE 4
-#define HEAD_DIM INPUT_SIZE/NUM_HEAD
-#define ATTEN_QSCALING powf(HEAD_DIM, -0.5)
+#define HEAD_DIM (INPUT_SIZE/NUM_HEAD)
+#define ATTEN_QSCALING (powf(HEAD_DIM, -0.5))
 #define LAYERNORM_EPS 1e-5
+#define IFAGGREGATE_SIZE 4
+#define IFAGGRE_LENGTH(L) (L/IFAGGREGATE_SIZE + 1)
 
 #define LENGTHWISE_UNROLL 4
 
@@ -36,15 +40,23 @@
 
 typedef float pricebase_t;
 
+typedef struct {
+	pricebase_t data32_0;
+	pricebase_t data32_1;
+	pricebase_t data32_2;
+	pricebase_t data32_3;
+} if128b_t;
+
 void model(
-    pricebase_t price[INPUT_LENGTH * INPUT_SIZE],    // ACP
-    pricebase_t prediction[OUTPUT_LENGTH]       // ACE
+    if128b_t price[INPUT_LENGTH],
+    if128b_t prediction[IFAGGRE_LENGTH(OUTPUT_LENGTH)]
 );
 
-void encoder_pricesplit(
-	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE],
-	pricebase_t tin[INPUT_LENGTH*INPUT_SIZE]
-);
+// void model(
+//     pricebase_t price[INPUT_LENGTH * INPUT_SIZE],    // ACP
+//     pricebase_t prediction[OUTPUT_LENGTH]       // ACE
+// );
+
 
 void encoder_multilayer(
 	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE],
@@ -52,14 +64,30 @@ void encoder_multilayer(
 );
 
 void crop_pred(
-	pricebase_t tout[OUTPUT_LENGTH],
+	if128b_t tout[IFAGGRE_LENGTH(OUTPUT_LENGTH)],
 	pricebase_t tin[1][INPUT_LENGTH-KERNEL_SIZE+1+OUTPUT_LENGTH]
-);
+); 
+// void crop_pred(
+// 	pricebase_t tout[OUTPUT_LENGTH],
+// 	pricebase_t tin[1][INPUT_LENGTH-KERNEL_SIZE+1+OUTPUT_LENGTH]
+// );
 
 void encoder(
-	pricebase_t price[INPUT_LENGTH * INPUT_SIZE],
+	if128b_t price[INPUT_LENGTH],
 	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE]
 );
+void encoder_pricesplit(
+	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE],
+	if128b_t tin[INPUT_LENGTH]
+);
+// void encoder(
+// 	pricebase_t price[INPUT_LENGTH * INPUT_SIZE],
+// 	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE]
+// );
+// void encoder_pricesplit(
+// 	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE],
+// 	pricebase_t tin[INPUT_LENGTH*INPUT_SIZE]
+// );
 
 void encoderlayer(
 	pricebase_t price[INPUT_LENGTH][INPUT_SIZE],

@@ -1,4 +1,6 @@
-
+// #include "/home/yzhengbv/Xilinx/Vitis_HLS/2022.1/include/gmp.h"
+// #define __gmp_const const
+// #include <mpfr.h>
 #include<iostream>
 #include<fstream>
 #include<sstream>
@@ -77,8 +79,10 @@ int main()
 	
 	string iline, oline;
 	vector<pricebase_t> line_split, line_splito;
-    pricebase_t pricein[INPUT_LENGTH*INPUT_SIZE];
-    pricebase_t predout[OUTPUT_LENGTH];
+    pricebase_t* pricein; //[INPUT_LENGTH*INPUT_SIZE];
+    pricebase_t* predout; //[OUTPUT_LENGTH];
+    if128b_t priceinif[INPUT_LENGTH];
+    if128b_t predoutif[IFAGGRE_LENGTH(OUTPUT_LENGTH)];
 
 	int retval=0;
     int id = 0;
@@ -93,12 +97,15 @@ int main()
 
 		line_splito = split_string(oline, string(","));
 		line_split = split_string(iline, string(","));
-        vector1d2array1d<pricebase_t, INPUT_LENGTH, INPUT_SIZE>(line_split, pricein);
+        vector1d2array1d<pricebase_t, INPUT_LENGTH, INPUT_SIZE>(line_split, (pricebase_t*)priceinif);
+		// priceinif = (if128b_t*) pricein;
 
         start = clock();
-        model(pricein, predout);
+        model(priceinif, predoutif);
 		end = clock();
 		elapsed_ms = (double)(end-start)/CLOCKS_PER_SEC * 1000000;
+
+		predout = (pricebase_t*) predoutif;
 
 		answer << concat_string(line_splito, string(",")) << std::endl;
 		result << concat_string(vector<pricebase_t>(predout, predout+ OUTPUT_LENGTH), string(",")) << std::endl;

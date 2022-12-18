@@ -228,7 +228,7 @@ void softmax(
 
 			SOFTMAX_EXP_SUM:
 			for (int x = 0; x < D2; x++){
-#pragma HLS PIPELINE
+// #pragma HLS PIPELINE II=4
 				pricebase_t v = hls::expf(tin[c][y][x]);
 				sum += v;
 				tmp[x] = v;
@@ -262,15 +262,21 @@ void squeeze_padding(
 
 
 void model(
-    pricebase_t price[INPUT_LENGTH*INPUT_SIZE],    // ACP
-    pricebase_t prediction[OUTPUT_LENGTH]       // ACE
+    if128b_t price[INPUT_LENGTH],
+    if128b_t prediction[IFAGGRE_LENGTH(OUTPUT_LENGTH)]
+    // pricebase_t price[INPUT_LENGTH*INPUT_SIZE],    // ACP
+    // pricebase_t prediction[OUTPUT_LENGTH]       // ACE
 ){
 
-#pragma HLS INTERFACE m_axi depth=4096 max_read_burst_length=16 max_write_burst_length=16  bundle=gmem0 port=price offset=slave 
-#pragma HLS INTERFACE m_axi depth=4096 max_read_burst_length=16 max_write_burst_length=16 bundle=gmem1 port=prediction offset=slave
+#pragma HLS INTERFACE m_axi depth=4096 max_read_burst_length=4 max_write_burst_length=4  bundle=gmem0 port=price offset=slave 
+#pragma HLS INTERFACE m_axi depth=4096 max_read_burst_length=4 max_write_burst_length=4 bundle=gmem1 port=prediction offset=slave
 
+// #pragma HLS INTERFACE m_axi depth=4096 bundle=gmem0 port=price offset=slave 
+// #pragma HLS INTERFACE m_axi depth=4096 bundle=gmem1 port=prediction offset=slave
+
+#pragma HLS INTERFACE s_axilite port=return bundle=control
 #pragma HLS INTERFACE s_axilite port=price 	bundle=control
-#pragma HLS INTERFACE s_axilite port=prediction bundle=ccontrol
+#pragma HLS INTERFACE s_axilite port=prediction bundle=control
 
 // #pragma HLS DATAFLOW
 
@@ -299,18 +305,34 @@ void model(
 
 
 void crop_pred(
-	pricebase_t tout[OUTPUT_LENGTH],
+	if128b_t tout[IFAGGRE_LENGTH(OUTPUT_LENGTH)],
 	pricebase_t tin[1][INPUT_LENGTH-KERNEL_SIZE+1+OUTPUT_LENGTH]
 ){
-    for (int io = 0; io < OUTPUT_LENGTH; io++){
-#pragma HLS PIPELINE
-        tout[io] = tin[0][INPUT_LENGTH-KERNEL_SIZE+1+io];
+    if128b_t tmp[IFAGGRE_LENGTH(OUTPUT_LENGTH)];
+    tmp[0] = { tin[0][INPUT_LENGTH-KERNEL_SIZE+1], 
+                tin[0][INPUT_LENGTH-KERNEL_SIZE+2],
+                tin[0][INPUT_LENGTH-KERNEL_SIZE+3],
+                tin[0][INPUT_LENGTH-KERNEL_SIZE+4]
+                };
+    tmp[1] = { tin[0][INPUT_LENGTH-KERNEL_SIZE+5], 
+                tin[0][INPUT_LENGTH-KERNEL_SIZE+6],
+                0,
+                0
+                };
+    
+    for (int i = 0; i < IFAGGRE_LENGTH(OUTPUT_LENGTH); i++){
+#pragma HLS PIPELINE II=2
+        tout[i] = tmp[i];
     }
+    // for (int io = 0; io < OUTPUT_LENGTH; io++){
+// #pragma HLS PIPELINE
+    //     tout[io] = tin[0][INPUT_LENGTH-KERNEL_SIZE+1+io];
+    // }
 }
 
 
 void encoder(
-	pricebase_t price[INPUT_LENGTH * INPUT_SIZE],
+	if128b_t price[INPUT_LENGTH],
 	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE]
 ){
 #pragma HLS DATAFLOW
@@ -326,18 +348,21 @@ void encoder(
 
 void encoder_pricesplit(
 	pricebase_t tout[COUT][INPUT_LENGTH][INPUT_SIZE],
-	pricebase_t tin[INPUT_LENGTH * INPUT_SIZE]
+	if128b_t tin[INPUT_LENGTH]
 ){
 #pragma HLS PIPELINE off
 	for (int y = 0; y < INPUT_LENGTH; y++){
 //#pragma PIPELINE off
-		for (int x = 0; x < INPUT_SIZE; x++){
-			pricebase_t v = tin[y * INPUT_SIZE + x];
+		// for (int x = 0; x < INPUT_SIZE; x++){
+			if128b_t v = tin[y];
 //#pragma HLS UNROLL
 			for (int c = 0; c < COUT; c++){
-				tout[c][y][x] = v;
+				tout[c][y][0] = v.data32_0;
+				tout[c][y][1] = v.data32_1;
+				tout[c][y][2] = v.data32_2;
+				tout[c][y][3] = v.data32_3;
 			}
-		}
+		// }
 	}
 
 }
