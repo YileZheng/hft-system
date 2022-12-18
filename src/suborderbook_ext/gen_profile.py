@@ -10,4 +10,5 @@ if __name__ == "__main__":
         f.write(f"\n#define AS_RANGE {RANGE}")
         f.write(f"\n#define AS_CHAIN_LEVELS {CHAIN_LEVELS}")
         f.write(f"\n#define AS_UNIT {AS_UNIT}")
-        f.write(f"\n#define AS_SLOTSIZE {SLOTSIZE}")
+        f.write(f"\n#define AS_SLOTSIZE {int(SLOTSIZE)}")
+        f.write(f"\n#define AS_INVALID_LINK {int(RANGE*2+CHAIN_LEVELS)}")
