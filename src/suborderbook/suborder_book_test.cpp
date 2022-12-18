@@ -173,13 +173,13 @@ int main()
 		if (req_read==1){
 			stat[3].push_back(elapsed_ms);
 			string s = concat_string(resultbook, string(","), level);
-			if (s.compare(last_orderbook_line) != 0){
+			if (s.compare(orderbook_line) != 0){
 				std::cout << "Line: " <<id<<": Result orderbook not match !!!!!!!!" <<std::endl;
-				std::cout <<"Ground Truth  "<< last_orderbook_line << std::endl;
+				std::cout <<"Ground Truth  "<< orderbook_line << std::endl;
 				std::cout <<":OrderBook:   "<< s << std::endl;
 			}
 			result << s << endl;
-			answer << last_orderbook_line << endl;
+			answer << orderbook_line << endl;
 		}
 		else{
 			stat[(int)odop].push_back(elapsed_ms);
