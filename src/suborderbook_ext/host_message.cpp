@@ -168,7 +168,7 @@ bool messageManager::check_resultbook(
 	string last_orderbook_line = llast_orderbook_line_ls[loc];
 	string s = concat_string(resultbook, string(","), level);
 	if (s.compare(last_orderbook_line) != 0){
-		std::cout <<"Symbol: " <<symbol_map[loc]<<": Result orderbook not match !!!!!!!!" <<std::endl;
+		// std::cout <<"Symbol: " <<symbol_map[loc]<<": Result orderbook not match !!!!!!!!" <<std::endl;
 		std::cout <<"Ground Truth: "<< last_orderbook_line << std::endl;
 		std::cout <<"OrderBook:    "<< s << std::endl;
 	}else{
@@ -189,10 +189,10 @@ bool messageManager::final_check(){
 	int retval=0;
 	retval = system((string("diff --brief -w ")+result_path+" "+answer_path).data());
 	if (retval != 0) {
-		printf("Test failed  !!!\n"); 
+		// printf("Test failed  !!!\n"); 
 		return false;
 	} else {
-		printf("Test passed !\n");
+		// printf("Test passed !\n");
 		return true;
 	}
 }
